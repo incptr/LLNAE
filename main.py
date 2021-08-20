@@ -11,11 +11,11 @@ from settings import *
 import threading, time, os, ctypes
 
 #------------ SETTINGS ---------------    
-testing = False
+testing = True
 mode = 'manual'
-window_mode = 'full'
+window_mode = 'half'
 reading_delay = 5.0
-fast_forward_delay = 0.0
+ff_delay = 0.0
 time.sleep(1)
 res = 2160
 deck = 'icelandic'
@@ -31,7 +31,7 @@ def thread_function(name):
 if __name__ == "__main__":    
     
         
-    wp = WindowSettings(window_mode,res)
+    wp = WindowSettings(window_mode,res,ff_delay)
     de = DeckSettings(deck, og_lang, trans_lang,testing)
     saver = LLNSaver(de,wp)
     statemachine = StateMachine(saver,mode)   

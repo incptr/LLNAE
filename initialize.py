@@ -40,7 +40,7 @@ def startup(de):
           # original language
           f.write(de.trans_lang +'\n')
           # savepoint csv
-          f.write(0)
+          f.write('0')
         print('++ Config created.'.format(de.deck))
     
     print('-- Starting netflix flashcard saver v0.1')

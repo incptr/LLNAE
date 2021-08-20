@@ -73,7 +73,7 @@ class StateMachine():
                 im = pyautogui.screenshot()
                 if self.saver.check_if_running(im):
                     self.saver.check_if_phrase_started()
-                    self.saver.save_sentence(self.saver.de.testing,fast_forward_delay)
+                    self.saver.save_sentence(self.saver.de.testing,self.saver.wp.ff_delay)
                     print("++ Phrase saved.")
                     pyautogui.press('right')
                     

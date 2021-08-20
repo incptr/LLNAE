@@ -41,29 +41,37 @@ class DeckSettings():
             f.writelines(lines)
             
 class WindowSettings():
-    def __init__(self,size,res):
+    def __init__(self,size,res,ff_delay):
+        self.ff_delay = ff_delay
+        
+        def read_cfg(line):
+            nums = line.split()
+            return [int(nums[0]),int(nums[1])]
         
         self.res = res/2160
-        
+        with open('user_settings.cfg') as f:
+            cfg = f.readlines()   
+            
         if size=='half':
-            self.nflix_ul = [1920,740]
-            self.nflix_br = [1920+1100,740+619]
-            self.phrase_ul = [2026,1880]
-            self.phrase_br = [2026+1692,1880+103]
-            self.trans_ul = [2026,1970]
-            self.trans_br = [2026+1692,1970+103]
-            self.cursor_pos = [2881,2120]
-            self.AP_pos = [3790,1880]
+            
+            self.nflix_ul = read_cfg(cfg[0])
+            self.nflix_br = read_cfg(cfg[1])
+            self.phrase_ul = read_cfg(cfg[2])
+            self.phrase_br = read_cfg(cfg[3])
+            self.trans_ul = read_cfg(cfg[4])
+            self.trans_br = read_cfg(cfg[5])
+            self.cursor_pos = read_cfg(cfg[6])
+            self.AP_pos = read_cfg(cfg[7])
             
         elif size =='full':
-            self.nflix_ul = [0,120]
-            self.nflix_br = [3040,1700]
-            self.phrase_ul = [614,1840]
-            self.phrase_br = [3319,1987]
-            self.trans_ul = [614,1975] 
-            self.trans_br = [3319,2105]
-            self.cursor_pos = [1919,2118]
-            self.AP_pos = [3763,1878]
+            self.nflix_ul = read_cfg(cfg[8])
+            self.nflix_br = read_cfg(cfg[9])
+            self.phrase_ul = read_cfg(cfg[10])
+            self.phrase_br = read_cfg(cfg[11])
+            self.trans_ul = read_cfg(cfg[12])
+            self.trans_br = read_cfg(cfg[13])
+            self.cursor_pos = read_cfg(cfg[14])
+            self.AP_pos = read_cfg(cfg[15])
     
 
 
