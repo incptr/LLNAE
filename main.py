@@ -11,7 +11,7 @@ from settings import *
 import threading, time, os, ctypes
 
 #------------ SETTINGS ---------------    
-testing = True
+testing = False
 mode = 'manual'
 window_mode = 'half'
 reading_delay = 5.0

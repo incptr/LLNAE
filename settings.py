@@ -16,7 +16,13 @@ class DeckSettings():
         self.ri = 0
         self.si = 0
         
-    def load_params(self):
+    def load_params(self,selected_deck=''):
+        
+        if not selected_deck == '':                
+            self.deck = selected_deck
+            self.path = 'data/{}/'.format(self.deck)
+            
+        # catch if params.cfg doesnt exist
         with open(self.path+'params.cfg') as f:
             lines = f.readlines()     
         self.ri = int(lines[0])
@@ -43,36 +49,35 @@ class DeckSettings():
 class WindowSettings():
     def __init__(self,size,res,ff_delay):
         self.ff_delay = ff_delay
+        self.mode = 'manual'
+         
+
+            
+        self.load_config()
+        
+    def load_config(self):
         
         def read_cfg(line):
             nums = line.split()
-            return [int(nums[0]),int(nums[1])]
+            return [int(nums[0]),int(nums[1])]       
         
-        self.res = res/2160
+        # to-do enable different user settings/profiles
         with open('user_settings.cfg') as f:
-            cfg = f.readlines()   
+            cfg = f.readlines()      
             
-        if size=='half':
+        self.nflix_ul = read_cfg(cfg[0])
+        self.nflix_br = read_cfg(cfg[1])
+        self.phrase_ul = read_cfg(cfg[2])
+        self.phrase_br = read_cfg(cfg[3])
+        self.trans_ul = read_cfg(cfg[4])
+        self.trans_br = read_cfg(cfg[5])
+        self.cursor_pos = read_cfg(cfg[6])
+        self.AP_pos = read_cfg(cfg[7])
+        self.res = int(cfg[8][:-1])
+        self.mode = cfg[9][:-1]
+        
             
-            self.nflix_ul = read_cfg(cfg[0])
-            self.nflix_br = read_cfg(cfg[1])
-            self.phrase_ul = read_cfg(cfg[2])
-            self.phrase_br = read_cfg(cfg[3])
-            self.trans_ul = read_cfg(cfg[4])
-            self.trans_br = read_cfg(cfg[5])
-            self.cursor_pos = read_cfg(cfg[6])
-            self.AP_pos = read_cfg(cfg[7])
-            
-        elif size =='full':
-            self.nflix_ul = read_cfg(cfg[8])
-            self.nflix_br = read_cfg(cfg[9])
-            self.phrase_ul = read_cfg(cfg[10])
-            self.phrase_br = read_cfg(cfg[11])
-            self.trans_ul = read_cfg(cfg[12])
-            self.trans_br = read_cfg(cfg[13])
-            self.cursor_pos = read_cfg(cfg[14])
-            self.AP_pos = read_cfg(cfg[15])
-    
+
 
 
     

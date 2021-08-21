@@ -11,6 +11,7 @@ Created on Wed Aug 18 00:28:58 2021
 
 @author: domen
 """
+
 # try using langdetect
 
 import cv2
