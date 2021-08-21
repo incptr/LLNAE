@@ -42,7 +42,7 @@ class DeckSettings():
         with open(self.path+'params.cfg') as f:
             lines = f.readlines()        
             lines[0] = str(target)+'\n'
-            lines[3] = '0'
+            lines[3] = '0\n'
         with open(self.path+'params.cfg','w') as f:
             f.writelines(lines)
             

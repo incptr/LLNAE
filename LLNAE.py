@@ -7,6 +7,7 @@
 # WARNING! All changes made in this file will be lost!
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from settings import WindowSettings,DeckSettings
 from calibrate_screen import *
@@ -19,21 +20,116 @@ class DeckViewer():
         self.empty = True
         self.idx = 1
         self.n_cards = 0
+        self.card_number = 1
+        self.im_path =''
+        self.ph_path =''
+        self.sub_path =''
         
-    def load_picture(self,direction=0):
+    def check_favorite(self):
+        favorite = False
+        
+        with open(self.deck_set.path+'favorites.cfg') as f:
+            lines = f.readlines()
+            
+        for line in lines:            
+            vals = line.split(' ')
+            indx = int(vals[0])
+            if indx == self.idx:                
+                favorite = int(vals[1])
+        return favorite
+        
+    def save_favorite(self,val):
+        with open(self.deck_set.path+'favorites.cfg') as f:
+            lines = f.readlines()   
+        for indx in lines:
+            if indx == self.idx:
+                favorite = indx.split(' ')
+                favorite[1] = val
+                lines[indx] = favorite[0] + ' ' + str(favorite[1])
+        
+        with open(self.deck_set.path+'favorites.cfg','w') as f:
+            f.writelines(lines)
+            
+        
+        
+    def load_picture(self,mode=''):
+        
+        start_idx = self.idx
+        
+        if mode == 'init':
+            list_of_files = filter( os.path.isfile,
+                          glob.glob(self.deck_set.path + 'images/' + '*') )
+            list_of_files = sorted( list_of_files,
+                                  key = os.path.getmtime)
+            
+            start_idx = list_of_files[0]       
+            start_idx = int(start_idx[28+len(self.deck_set.deck):-4])
+
+        
+        self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
+        self.ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,start_idx)
+        self.sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,start_idx)
+        
+        self.idx = max(start_idx,0) 
+        idx = self.idx
+        
+
+        
+        if os.path.isfile(self.im_path) and os.path.isfile(self.ph_path) and os.path.isfile(self.sub_path):
+            return [self.im_path,self.ph_path,self.sub_path,idx]
+        else:
+            return ['','','',idx]
+        
+    def get_next_picture(self,direction=0,mode='standard',deletion=0):
         
         # loop around 0->-1 
         
-        load_idx = self.idx+direction
+        # get first and last index
+        list_of_files = filter( os.path.isfile,
+                      glob.glob(self.deck_set.path + 'images/' + '*') )
+        list_of_files = sorted( list_of_files,
+                              key = os.path.getmtime)
         
-        im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,load_idx)
-        ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,load_idx)
-        sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,load_idx)
+        first_index = list_of_files[0]     
+        first_index = int(first_index[28+len(self.deck_set.deck):-4])
         
-        self.idx = max(load_idx,0)       
+        last_index = list_of_files[-1]
+        last_index = int(last_index[28+len(self.deck_set.deck):-4])
         
-        if os.path.isfile(im_path) and os.path.isfile(ph_path) and os.path.isfile(sub_path):
-            return [im_path,ph_path,sub_path,self.idx]
+        start_idx = self.idx
+        img_found = False
+        
+        while not img_found:
+            
+            if start_idx == first_index and direction == -1:
+                start_idx = last_index
+                self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
+                self.ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,start_idx)
+                self.sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,start_idx)
+                self.card_number = self.n_cards
+                break
+            
+            elif start_idx == last_index and direction == 1:
+                start_idx = first_index
+                self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
+                self.ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,start_idx)
+                self.sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,start_idx)
+                self.card_number = 1
+                break
+            
+            start_idx = start_idx+direction
+            self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
+            self.ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,start_idx)
+            self.sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,start_idx)
+            
+            if os.path.isfile(self.im_path) and os.path.isfile(self.ph_path) and os.path.isfile(self.sub_path):
+                img_found = True
+                self.card_number = self.card_number + direction - deletion
+        
+        self.idx = start_idx
+
+        if os.path.isfile(self.im_path) and os.path.isfile(self.ph_path) and os.path.isfile(self.sub_path):
+            return [self.im_path,self.ph_path,self.sub_path,self.idx]
         else:
             return ['','','',self.idx]
         
@@ -41,7 +137,9 @@ class DeckViewer():
 
 
 class StateMachineWorker(QObject):
-
+    
+    finished = pyqtSignal()
+    progress = pyqtSignal(int)
     def __init__(self,state_machine):
         super(StateMachineWorker, self).__init__()
         self.sm = state_machine        
@@ -56,29 +154,117 @@ class Ui_MainWindow(object):
     
     #----------------- VIEWER --------------------------
     
+    def reset_msg_clicked(self,choice):
+        
+
+        # reload values in statemachine and deckviewer
+        if choice.text() == 'OK':                
+            self.deck_viewer.deck_set.set_index(0)
+            self.sm.saver.de.set_index(0)
+            
+            dir = self.deck_viewer.deck_set.path + 'images'
+            for f in os.listdir(dir):
+                os.remove(os.path.join(dir, f))
+            dir = self.deck_viewer.deck_set.path + 'phrases'
+            for f in os.listdir(dir):
+                os.remove(os.path.join(dir, f))
+            dir = self.deck_viewer.deck_set.path + 'trans'
+            for f in os.listdir(dir):
+                os.remove(os.path.join(dir, f))
+            print('++ Index reset to 0. All images deleted')
+            
+            self.deckPhoto.setPixmap(QtGui.QPixmap('app_data/images/blank.png'))
+            self.deckPhraseLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
+            self.deckSubLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
+            self.label_7.setText('Card #{} of {}'.format(0,0))
+            
+        else:
+            print('-- Aborted')
+            
+    def delete_phrase_clicked(self):  
+      
+        os.remove(self.deck_viewer.im_path)
+        os.remove(self.deck_viewer.ph_path)
+        os.remove(self.deck_viewer.sub_path)
+        self.deck_viewer.n_cards = self.deck_viewer.n_cards -1
+        [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=1,deletion = 1)  
+        if not im_path == '':
+            self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
+            self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
+            self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+        self.label_7.setText('Card #{} of {}'.format(self.deck_viewer.card_number,self.deck_viewer.n_cards))
+        
+        
+    
+    def reset_deck_clicked(self):
+        
+        qm = QMessageBox()
+        qm.setWindowTitle('Warning')
+        qm.setText('Are you sure you want to delete all {} flashcards?'.format(self.deck_viewer.n_cards))
+        qm.setIcon(QMessageBox.Question)
+        qm.setStandardButtons(QMessageBox.Ok|QMessageBox.Cancel)
+        qm.buttonClicked.connect(self.reset_msg_clicked)
+        x = qm.exec_()
+    
     def next_image_clicked(self):
         
-        [im_path,ph_path,sub_path,idx] = self.deck_viewer.load_picture(direction=1)
+        [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=1)
         
         if not im_path == '':
             self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
             self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
             self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
             
-            self.label_7.setText('Card #{} of {}'.format(idx,self.deck_viewer.n_cards))
+            self.label_7.setText('Card #{} of {}'.format(self.deck_viewer.card_number,self.deck_viewer.n_cards))
+            
+            fav_val = self.deck_viewer.check_favorite()
+            if fav_val:
+                    self.label_2.resize(25,25)
+                    self.importantCardCheck.setChecked(True)                 
+            else:                
+                    self.label_2.resize(25,0)
+                    self.importantCardCheck.setChecked(False)
+            
     
     def prev_image_clicked(self):
         
-        [im_path,ph_path,sub_path,idx] = self.deck_viewer.load_picture(direction=-1)
+        [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=-1)
         
         if not im_path == '':
             self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
             self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
             self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
             
-            self.label_7.setText('Card #{} of {}'.format(idx,self.deck_viewer.n_cards))
+            self.label_7.setText('Card #{} of {}'.format(self.deck_viewer.card_number,self.deck_viewer.n_cards))
         
-    
+            fav_val = self.deck_viewer.check_favorite()
+            if fav_val:
+                    self.label_2.resize(25,25)
+                    self.importantCardCheck.setChecked(True)                   
+            else:                
+                    self.label_2.resize(25,0)
+                    self.importantCardCheck.setChecked(False)
+        
+    def update_show_translation(self):
+        if self.showTranslationCheck.isChecked():
+            self.deckSubLabel.setPixmap(QtGui.QPixmap(self.deck_viewer.sub_path))
+        else:                
+            self.deckSubLabel.clear()
+
+    def update_favorite(self):
+        if self.importantCardCheck.isChecked():
+            with open(self.deck_viewer.im_path) as f:
+                f.fileinfo = {'favorite': 'yes'}
+                self.label_2.resize(25,25)
+                
+        else:                
+            with open(self.deck_viewer.im_path) as f:
+                f.fileinfo = {'favorite': 'no'}
+                self.label_2.resize(25,0)
+                
+                    
+        self.deck_viewer.save_favorite(self.importantCardCheck.isChecked())
+            
     #----------------- RECORDER --------------------------
     
     
@@ -104,6 +290,7 @@ class Ui_MainWindow(object):
         self.sm.saver.wp.res = int(self.resolutionBox.currentText())/2160
         print('New res: {}'.format(self.sm.saver.wp.res))
     
+
         
     
     # widget triggers
@@ -130,7 +317,7 @@ class Ui_MainWindow(object):
         
     def deck_select_clicked(self):
         self.deck_viewer = DeckViewer(self.sm.saver.de)
-        [im_path,ph_path,sub_path,idx] = self.deck_viewer.load_picture()
+        [im_path,ph_path,sub_path,idx] = self.deck_viewer.load_picture(mode='init')
         
         if not im_path == '':
             self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
@@ -230,12 +417,20 @@ class Ui_MainWindow(object):
         self.stopRecorderButton.clicked.connect(self.stop_recording_clicked)
         self.selectDeckButton.clicked.connect(self.deck_select_clicked)
         self.nextImageButton.clicked.connect(self.next_image_clicked)       
-        self.previousImageButton.clicked.connect(self.prev_image_clicked)         
+        self.previousImageButton.clicked.connect(self.prev_image_clicked)   
+        self.resetDeckButton.clicked.connect(self.reset_deck_clicked)
+        self.deletePhraseButton.clicked.connect(self.delete_phrase_clicked)
         
         # boxes
         self.resolutionBox.currentIndexChanged.connect(self.update_resolution)
         self.recordingModeBox.currentIndexChanged.connect(self.update_recording_mode)
         self.deckSelectBox.currentIndexChanged.connect(self.update_deck_select)
+        
+        # checks
+        self.showTranslationCheck.stateChanged.connect(self.update_show_translation)
+        self.importantCardCheck.stateChanged.connect(self.update_favorite)
+        
+        
         
     
     def setupUi(self, MainWindow):
@@ -388,7 +583,7 @@ class Ui_MainWindow(object):
         self.label_2.setGeometry(QtCore.QRect(20, 40, 0, 25))
         self.label_2.setAutoFillBackground(False)
         self.label_2.setText("")
-        self.label_2.setPixmap(QtGui.QPixmap("data/star.png"))
+        self.label_2.setPixmap(QtGui.QPixmap("app_data/images/star.png"))
         self.label_2.setScaledContents(True)
         self.label_2.setObjectName("label_2")
         self.deckDescriptionTextEdit = QtWidgets.QPlainTextEdit(self.viewTab)
