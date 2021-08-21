@@ -15,6 +15,8 @@ class DeckSettings():
         self.testing = testing
         self.ri = 0
         self.si = 0
+        self.description = ''
+
         
     def load_params(self,selected_deck=''):
         
@@ -27,13 +29,16 @@ class DeckSettings():
             lines = f.readlines()     
         self.ri = int(lines[0])
         self.si = self.ri
-        self.og_lang = lines[1]
-        self.trans_lang = lines[2]
-        self.csv_savepoint = int(lines[3])
+        self.og_lang = lines[1][:-1]
+        self.trans_lang = lines[2][:-1]
+        self.csv_savepoint = int(lines[3][:-1])
+        self.description = lines[4]
         
     def save_params(self):
         with open(self.path+'params.cfg') as f:
-            lines = f.readlines()        
+            lines = f.readlines()      
+            lines[1] = self.og_lang + '\n'
+            lines[2] = self.trans_lang + '\n'
             lines[0] = str(self.ri) +'\n' 
         with open(self.path+'params.cfg','w') as f:
             f.writelines(lines)
@@ -50,9 +55,7 @@ class WindowSettings():
     def __init__(self,size,res,ff_delay):
         self.ff_delay = ff_delay
         self.mode = 'manual'
-         
-
-            
+        self.use_trans = ''            
         self.load_config()
         
     def load_config(self):
@@ -73,9 +76,19 @@ class WindowSettings():
         self.trans_br = read_cfg(cfg[5])
         self.cursor_pos = read_cfg(cfg[6])
         self.AP_pos = read_cfg(cfg[7])
-        self.res = int(cfg[8][:-1])
+        self.res = int(cfg[8][:-1])/2160
         self.mode = cfg[9][:-1]
+        self.use_trans = cfg[10]
         
+    def save_config(self):
+        with open('user_settings.cfg') as f:
+            lines = f.readlines()      
+            lines[8] = str(int(self.res*2160)) + '\n'
+            lines[9] = self.mode + '\n'
+            lines[10] = self.use_trans 
+        with open('user_settings.cfg','w') as f:
+            f.writelines(lines)
+    
             
 
 

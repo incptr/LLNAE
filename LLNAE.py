@@ -7,12 +7,28 @@
 # WARNING! All changes made in this file will be lost!
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QWidget,QPushButton,QLineEdit, QInputDialog, QApplication, QFormLayout
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from settings import WindowSettings,DeckSettings
 from calibrate_screen import *
 from LLNSaver import *
 from state_machine import *
+
+    
+
+    
+
+class NewDeckPopup(QWidget):
+    def __init__(self):
+        super().__init__()
+        
+
+    def pop(self,text):
+        return QInputDialog.getText(self, 'New deck',text)
+        
+    
+        
+    
 
 class DeckViewer():
     def __init__(self,DeckSettings):
@@ -39,6 +55,7 @@ class DeckViewer():
         return favorite
         
     def save_favorite(self,val):
+        found = False
         with open(self.deck_set.path+'favorites.cfg') as f:
             lines = f.readlines()   
         for indx in lines:
@@ -46,9 +63,13 @@ class DeckViewer():
                 favorite = indx.split(' ')
                 favorite[1] = val
                 lines[indx] = favorite[0] + ' ' + str(favorite[1])
+                found = True
         
         with open(self.deck_set.path+'favorites.cfg','w') as f:
             f.writelines(lines)
+            if found == False and val == True:
+                f.write('{} {} \n'.format(self.idx,1))
+                
             
         
         
@@ -61,9 +82,9 @@ class DeckViewer():
                           glob.glob(self.deck_set.path + 'images/' + '*') )
             list_of_files = sorted( list_of_files,
                                   key = os.path.getmtime)
-            
-            start_idx = list_of_files[0]       
-            start_idx = int(start_idx[28+len(self.deck_set.deck):-4])
+            if len(list_of_files) > 0:
+                start_idx = list_of_files[0]       
+                start_idx = int(start_idx[28+len(self.deck_set.deck):-4])
 
         
         self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
@@ -152,6 +173,59 @@ class StateMachineWorker(QObject):
 
 class Ui_MainWindow(object):
     
+    # ---------------- HELPER METHODS ------------------    
+    def create_deck_files(self,deck_name,og_lang,trans_lang,description):
+        
+        def check_directory(path,hidden = False):   
+            if not os.path.isdir(path):
+                os.mkdir(path)
+                if hidden:
+                    FILE_ATTRIBUTE_HIDDEN = 0x02
+                    ret = ctypes.windll.kernel32.SetFileAttributesW(path, FILE_ATTRIBUTE_HIDDEN)
+                return False
+            else:
+                return True       
+            
+        def create_config():
+            with open(base_path+'params.cfg', 'w') as f:
+              f.write('%d \n' % 0)
+              # original language
+              f.write(og_lang +'\n')
+              # original language
+              f.write(trans_lang +'\n')
+              # savepoint csv
+              f.write('0\n')
+              f.write(description)
+              
+            with open(base_path+'favorites.cfg', 'w') as f:
+                f.write('')
+         
+        base_path = 'data/{}/'.format(deck_name)  
+        
+        if os.path.isdir(base_path):
+            return False
+        
+        if not (check_directory(base_path) or \
+                check_directory(base_path+'/images') or \
+                check_directory(base_path+'/phrases',True) or \
+                check_directory(base_path+'/trans',True)):
+            print('folders created')
+        
+        if os.path.isfile(base_path+'params.cfg'):
+            if not os.stat(base_path+'params.cfg').st_size:
+                create_config()
+        else:
+            create_config()
+            
+        if os.path.isfile(base_path+'favorites.cfg'):
+            if not os.stat(base_path+'favorites.cfg').st_size:
+                with open(base_path+'favorites.cfg', 'w') as f:
+                    f.write('')
+        else:
+           with open(base_path+'favorites.cfg', 'w') as f:
+               f.write('')
+        return True
+    
     #----------------- VIEWER --------------------------
     
     def reset_msg_clicked(self,choice):
@@ -212,8 +286,8 @@ class Ui_MainWindow(object):
         
         if not im_path == '':
             self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
-            self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
-            self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+            self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))            
+            if self.showTranslationCheck.isChecked(): self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
             
             self.label_7.setText('Card #{} of {}'.format(self.deck_viewer.card_number,self.deck_viewer.n_cards))
             
@@ -233,7 +307,7 @@ class Ui_MainWindow(object):
         if not im_path == '':
             self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
             self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
-            self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+            if self.showTranslationCheck.isChecked(): self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
             
             self.label_7.setText('Card #{} of {}'.format(self.deck_viewer.card_number,self.deck_viewer.n_cards))
         
@@ -274,21 +348,30 @@ class Ui_MainWindow(object):
             self.sm.saver.de.load_params(selected_deck)
             self.selected_deck = selected_deck
             self.valid_deck = True
-            print(self.sm.saver.de.og_lang)
+            # print(self.sm.saver.de.og_lang)
             self.originalLanguageLineEdit.setText(self.sm.saver.de.og_lang)
             self.translationLineEdit.setText(self.sm.saver.de.trans_lang)
-            print('Valid deck selected')
+            # print('Valid deck selected')
+            self.deck_select_clicked()
         else:
             self.valid_deck = False
-            print('Invalid deck selected')
+            # print('Invalid deck selected')
             
     def update_recording_mode(self):
         self.sm.mode = self.recordingModeBox.currentText()
-        print(self.sm.mode)
+        self.sm.saver.wp.mode = self.recordingModeBox.currentText()
+        self.sm.saver.wp.save_config()
+        # print(self.sm.mode)
               
     def update_resolution(self):
         self.sm.saver.wp.res = int(self.resolutionBox.currentText())/2160
-        print('New res: {}'.format(self.sm.saver.wp.res))
+        self.sm.saver.wp.save_config()
+        # print('New res: {}'.format(self.sm.saver.wp.res))
+        
+    def update_subtitle_mode(self):
+        self.sm.saver.wp.use_trans = self.subtitleModeBox.currentText()
+        self.sm.saver.wp.save_config()
+        # print('New res: {}'.format(self.sm.saver.wp.res))
     
 
         
@@ -306,10 +389,13 @@ class Ui_MainWindow(object):
     # def deck_select_clicked(self):
         
 
+    def apply_deck_clicked(self):
+        self.sm.saver.de.og_lang = self.originalLanguageLineEdit.text()
+        self.sm.saver.de.trans_lang = self.translationLineEdit.text()
+        print(self.sm.saver.de.og_lang )
+        print(self.sm.saver.de.trans_lang)
+        self.sm.saver.de.save_params()
 
-    def new_deck_clicked(self):
-        return
-    
     def calibrate_clicked(self):
         # calibrate_popup = calibrateDialog('Text',self)
         start_calibration()
@@ -329,11 +415,51 @@ class Ui_MainWindow(object):
         list_of_files = sorted( list_of_files,
                               key = os.path.getmtime)
         self.deck_viewer.n_cards = len(list_of_files)
+        
+        if self.deck_viewer.n_cards == 0:
+            self.deckPhoto.setPixmap(QtGui.QPixmap('app_data/images/blank.png'))
+            self.deckPhraseLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
+            self.deckSubLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
+            self.label_7.setText('Card #{} of {}'.format(0,0))
+            
+        
         self.label_7.setText('Card #1 of {}'.format(self.deck_viewer.n_cards))
+        self.deckDescriptionTextEdit.setPlainText(self.sm.saver.de.description)
         
             
             
         return
+    
+    def new_deck_clicked(self):
+        _translate = QtCore.QCoreApplication.translate
+        self.new_deck_pop = NewDeckPopup()
+        [deck_name,ok] = self.new_deck_pop.pop('Enter a deck name.')
+        
+        if ok:
+            [og_lang,ok] = self.new_deck_pop.pop('Enter the original language.')
+            if ok:
+                [trans_lang,ok] = self.new_deck_pop.pop('Enter the translated language.')
+                if ok:
+                    [description,ok] = self.new_deck_pop.pop('Enter a description for the deck.')
+                    
+            if self.create_deck_files(deck_name,og_lang,trans_lang,description):
+                self.deckSelectBox.addItem(deck_name)
+                index = self.deckSelectBox.findText(deck_name, QtCore.Qt.MatchFixedString)
+                self.deckSelectBox.setItemText(index, _translate("MainWindow", str(deck_name)))
+                self.deckSelectBox.setCurrentIndex(index)
+                self.update_deck_select()
+            
+        else:
+            return
+
+        # sys.exit(app.exec_())
+        # qm = QMessageBox()
+        # qm.setWindowTitle('Warning')
+        # qm.setText('Are you sure you want to delete all {} flashcards?'.format(self.deck_viewer.n_cards))
+        # qm.setIcon(QMessageBox.Question)
+        # qm.setStandardButtons(QMessageBox.Ok|QMessageBox.Cancel)
+        # qm.buttonClicked.connect(self.reset_msg_clicked)
+        # x = qm.exec_()
         
     def stop_recording_clicked(self):
         self.sm_worker.sm.shutdown_req = True
@@ -373,6 +499,19 @@ class Ui_MainWindow(object):
         for idx,deck in enumerate(deck_list):
             self.deckSelectBox.addItem(deck)
             self.deckSelectBox.setItemText(idx+1, _translate("MainWindow", str(deck)))
+            
+        if len(deck_list) > 0:
+            self.update_deck_select()
+            
+    def load_user_settings(self):        
+        idx = self.resolutionBox.findText(str(int(self.sm.saver.wp.res*2160)), QtCore.Qt.MatchFixedString)
+        self.resolutionBox.setCurrentIndex(idx)
+        idx = self.recordingModeBox.findText(self.sm.saver.wp.mode, QtCore.Qt.MatchFixedString)
+        self.recordingModeBox.setCurrentIndex(idx)
+        idx = self.subtitleModeBox.findText(self.sm.saver.wp.use_trans, QtCore.Qt.MatchFixedString)
+        self.subtitleModeBox.setCurrentIndex(idx)
+
+        
     
     def update_user_cfg(self,profile=0):
         
@@ -399,6 +538,7 @@ class Ui_MainWindow(object):
         self.selected_deck = '-'
         self.load_decks(self)
         self.qthread = QThread()
+        self.load_user_settings()
         return
     
     def init_events(self):
@@ -420,11 +560,14 @@ class Ui_MainWindow(object):
         self.previousImageButton.clicked.connect(self.prev_image_clicked)   
         self.resetDeckButton.clicked.connect(self.reset_deck_clicked)
         self.deletePhraseButton.clicked.connect(self.delete_phrase_clicked)
+        self.applyDeckChangesButton.clicked.connect(self.apply_deck_clicked)
+        self.newDeckButton.clicked.connect(self.new_deck_clicked)
         
         # boxes
         self.resolutionBox.currentIndexChanged.connect(self.update_resolution)
         self.recordingModeBox.currentIndexChanged.connect(self.update_recording_mode)
         self.deckSelectBox.currentIndexChanged.connect(self.update_deck_select)
+        self.subtitleModeBox.currentIndexChanged.connect(self.update_subtitle_mode)
         
         # checks
         self.showTranslationCheck.stateChanged.connect(self.update_show_translation)
@@ -678,7 +821,6 @@ class Ui_MainWindow(object):
         self.deckSelectBox = QtWidgets.QComboBox(self.centralwidget)
         self.deckSelectBox.setGeometry(QtCore.QRect(20, 155, 161, 24))
         self.deckSelectBox.setObjectName("deckSelectBox")
-        self.deckSelectBox.addItem("")
         self.newDeckButton = QtWidgets.QPushButton(self.centralwidget)
         self.newDeckButton.setEnabled(True)
         self.stopRecorderButton.setEnabled(False)
@@ -764,9 +906,8 @@ class Ui_MainWindow(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.exportTab), _translate("MainWindow", "Export"))
         self.label_11.setText(_translate("MainWindow", "Select or create a deck"))
         self.label_12.setText(_translate("MainWindow", "LLN Anki Exporter v0.1"))
-        self.deckSelectBox.setItemText(0, _translate("MainWindow", "-"))
         self.newDeckButton.setText(_translate("MainWindow", "New Deck"))
-        self.selectDeckButton.setText(_translate("MainWindow", "Select"))
+        self.selectDeckButton.setText(_translate("MainWindow", "Load"))
         self.actionCopy.setText(_translate("MainWindow", "Copy"))
         self.actionPaste.setText(_translate("MainWindow", "Paste"))
         self.actionExport_Deck.setText(_translate("MainWindow", "Export .."))
