@@ -13,18 +13,38 @@ from calibrate_screen import *
 from LLNSaver import *
 from state_machine import *
 
+class DeckViewer():
+    def __init__(self,DeckSettings):
+        self.deck_set = DeckSettings
+        self.empty = True
+        self.idx = 1
+        self.n_cards = 0
+        
+    def load_picture(self,direction=0):
+        
+        # loop around 0->-1 
+        
+        load_idx = self.idx+direction
+        
+        im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,load_idx)
+        ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,load_idx)
+        sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,load_idx)
+        
+        self.idx = max(load_idx,0)       
+        
+        if os.path.isfile(im_path) and os.path.isfile(ph_path) and os.path.isfile(sub_path):
+            return [im_path,ph_path,sub_path,self.idx]
+        else:
+            return ['','','',self.idx]
+        
+
 
 
 class StateMachineWorker(QObject):
-    
-    finished = pyqtSignal()
-    progress = pyqtSignal(int)
 
     def __init__(self,state_machine):
         super(StateMachineWorker, self).__init__()
-        self.sm = state_machine
-        print('Created worker')
-        
+        self.sm = state_machine        
 
     def run(self):
 
@@ -33,6 +53,58 @@ class StateMachineWorker(QObject):
 
 
 class Ui_MainWindow(object):
+    
+    #----------------- VIEWER --------------------------
+    
+    def next_image_clicked(self):
+        
+        [im_path,ph_path,sub_path,idx] = self.deck_viewer.load_picture(direction=1)
+        
+        if not im_path == '':
+            self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
+            self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
+            self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+            
+            self.label_7.setText('Card #{} of {}'.format(idx,self.deck_viewer.n_cards))
+    
+    def prev_image_clicked(self):
+        
+        [im_path,ph_path,sub_path,idx] = self.deck_viewer.load_picture(direction=-1)
+        
+        if not im_path == '':
+            self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
+            self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
+            self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+            
+            self.label_7.setText('Card #{} of {}'.format(idx,self.deck_viewer.n_cards))
+        
+    
+    #----------------- RECORDER --------------------------
+    
+    
+    def update_deck_select(self):
+        selected_deck =  self.deckSelectBox.currentText()
+        if not selected_deck == '-':
+            self.sm.saver.de.load_params(selected_deck)
+            self.selected_deck = selected_deck
+            self.valid_deck = True
+            print(self.sm.saver.de.og_lang)
+            self.originalLanguageLineEdit.setText(self.sm.saver.de.og_lang)
+            self.translationLineEdit.setText(self.sm.saver.de.trans_lang)
+            print('Valid deck selected')
+        else:
+            self.valid_deck = False
+            print('Invalid deck selected')
+            
+    def update_recording_mode(self):
+        self.sm.mode = self.recordingModeBox.currentText()
+        print(self.sm.mode)
+              
+    def update_resolution(self):
+        self.sm.saver.wp.res = int(self.resolutionBox.currentText())/2160
+        print('New res: {}'.format(self.sm.saver.wp.res))
+    
+        
     
     # widget triggers
     def reportProgress(self, n):
@@ -45,6 +117,8 @@ class Ui_MainWindow(object):
             self.reportProgress(i + 1)
             
     # def deck_select_clicked(self):
+        
+
 
     def new_deck_clicked(self):
         return
@@ -55,6 +129,23 @@ class Ui_MainWindow(object):
         self.update_user_cfg()
         
     def deck_select_clicked(self):
+        self.deck_viewer = DeckViewer(self.sm.saver.de)
+        [im_path,ph_path,sub_path,idx] = self.deck_viewer.load_picture()
+        
+        if not im_path == '':
+            self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
+            self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
+            self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+            
+        list_of_files = filter( os.path.isfile,
+                      glob.glob(self.deck_viewer.deck_set.path + 'images/' + '*') )
+        list_of_files = sorted( list_of_files,
+                              key = os.path.getmtime)
+        self.deck_viewer.n_cards = len(list_of_files)
+        self.label_7.setText('Card #1 of {}'.format(self.deck_viewer.n_cards))
+        
+            
+            
         return
         
     def stop_recording_clicked(self):
@@ -84,28 +175,9 @@ class Ui_MainWindow(object):
             
         else:
             print('Select a valid deck first.')
+            
         
-    def update_resolution(self):
-        self.sm.saver.wp.res = int(self.resolutionBox.currentText())/2160
-        print('New res: {}'.format(self.sm.saver.wp.res))
-        
-    def update_deck_select(self):
-        selected_deck =  self.deckSelectBox.currentText()
-        if not selected_deck == '-':
-            self.sm.saver.de.load_params(selected_deck)
-            self.selected_deck = selected_deck
-            self.valid_deck = True
-            print(self.sm.saver.de.og_lang)
-            self.originalLanguageLineEdit.setText(self.sm.saver.de.og_lang)
-            self.translationLineEdit.setText(self.sm.saver.de.trans_lang)
-            print('Valid deck selected')
-        else:
-            self.valid_deck = False
-            print('Invalid deck selected')
-    def update_recording_mode(self):
-        self.sm.mode = self.recordingModeBox.currentText()
-        print(self.sm.mode)
-        
+
         
     def load_decks(self,MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -114,7 +186,7 @@ class Ui_MainWindow(object):
         for idx,deck in enumerate(deck_list):
             self.deckSelectBox.addItem(deck)
             self.deckSelectBox.setItemText(idx+1, _translate("MainWindow", str(deck)))
-
+    
     def update_user_cfg(self,profile=0):
         
         def create_cfg_str(val1,val2=['','']):
@@ -128,6 +200,10 @@ class Ui_MainWindow(object):
         self.phrasePositionLineEdit.setText(create_cfg_str(self.sm.saver.wp.phrase_ul,self.sm.saver.wp.phrase_br))
         self.subtitlePositionLineEdit.setText(create_cfg_str(self.sm.saver.wp.trans_ul,self.sm.saver.wp.trans_br))
         self.cursorApPositionLineEdit.setText(create_cfg_str(self.sm.saver.wp.cursor_pos,self.sm.saver.wp.AP_pos))
+            
+
+
+    #----------------- INITIALIZE  --------------------------
         
     def initialize_settings(self):
         # load in user config
@@ -148,12 +224,15 @@ class Ui_MainWindow(object):
         self.initialize_settings()
         
         
-        # link events
+        # buttons
         self.calibrateButton.clicked.connect(self.calibrate_clicked)
         self.startRecorderButton.clicked.connect(self.start_recording_clicked)
         self.stopRecorderButton.clicked.connect(self.stop_recording_clicked)
         self.selectDeckButton.clicked.connect(self.deck_select_clicked)
+        self.nextImageButton.clicked.connect(self.next_image_clicked)       
+        self.previousImageButton.clicked.connect(self.prev_image_clicked)         
         
+        # boxes
         self.resolutionBox.currentIndexChanged.connect(self.update_resolution)
         self.recordingModeBox.currentIndexChanged.connect(self.update_recording_mode)
         self.deckSelectBox.currentIndexChanged.connect(self.update_deck_select)
