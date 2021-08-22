@@ -35,7 +35,7 @@ In this tab, a new deck can be created. This requires a deck name, original lang
 
 ![alt text](./app_data/images/calibration.png)
 
-If you have choosen your right settings, you can press "Start Recording" in order to enable recording. The script has three differnt modes:
+If you have choosen your right settings, you can press "Start Recording" in order to enable recording. Make sure that you started Chrome in the Sandbox mode. The script has three different modes:
 
 * manual: This enables saving with a single key press of "ctrl-left"
 * follow along: This will save all phrases that will be encountered in Netflix while the recorder is running
@@ -52,5 +52,8 @@ In the view tab you can review all your saved phrases, delete cards or favorite 
 This tab allows you to export the selected deck. It also has the option to convert all original phrases to IPA, given that a dictionary for the language is stored in "./ipa_dicts". All information will be saved as a csv file that can directly be imported into Anki. After exporting you will be asked to specify your Anki profile name, as it compies the files to that directory.
 
 ## Importing into Anki
-First import the "standard_nflx.apkg file". This will add the standard sentence card type for this export format to Anki. This step needs to be done only once for every profile that you want to use the app with. When you import the csv you need to make sure that "Allow HTML in fields" is checked in order for the pictures to show up in the stack. 
+### Step 1
+First import the "standard_nflx.apkg file". This will add the standard sentence card type for this export format to Anki. This step needs to be done only once for every profile that you want to use the app with. 
+### Step 2
+When you import the csv you need to make sure that "Allow HTML in fields" is checked in order for the pictures to show up in the stack. Also check that you import it as a "Netflix card" sentence type (the one imported in Step 1)
 
