@@ -30,8 +30,67 @@ import subprocess
     # load profile is useless
     # status bar for recording mode
     
+    
+# class POINT(Structure):
+#        _fields_ = [("x", c_long), ("y", c_long)] 
+       
 class CalibrationThread(QThread):
-    pass
+    
+    cal_index = pyqtSignal(int)
+    listener = []
+    xy = [0,0]
+    
+    def __init__(self):
+        super(CalibrationThread,self).__init__()
+
+
+    def queryMousePosition(self):
+        pt = POINT()
+        windll.user32.GetCursorPos(byref(pt))
+        return [pt.x,pt.y]
+
+    def start_calibration(self):   
+        
+        def on_press(key):
+            global xy
+            if key == Key.ctrl_l:
+                xy = queryMousePosition()
+                print(xy)
+                return False     
+        
+            
+        def on_release(key):
+            if key == Key.esc:
+                return False
+
+        
+        with open('user_settings.cfg') as f:
+            cfg_lines = f.readlines()        
+            
+        for ind,val in enumerate(cfg_lines):
+            # print('Please mark point #{}'.format(ind))
+            
+            with Listener(  
+                           on_press=on_press,
+                           on_release=on_release) as self.listener:
+                       self.listener.join() 
+            cfg_lines[ind] = '{} {}\n'.format(xy[0],xy[1])
+            self.cal_index.emit(ind)
+            if ind == 7:
+                break    
+        
+        with open('user_settings.cfg','w') as f:
+            f.writelines(cfg_lines)
+        self.cal_index.emit(8)
+    
+
+    
+    def run(self):
+        self.start_calibration()
+        
+        
+        
+    
 
 class ExportThread(QThread):
     
@@ -164,6 +223,67 @@ class Ui_MainWindow(object):
         return True
     #------------------- EXPORTER-----------------------
     
+    def calibrate_progress(self,val):
+        
+        print('Calibrating #{}'.format(val))
+        # if val == 0:
+        #     self.msg = QMessageBox()
+        #     self.msg.setWindowTitle("Calibration")
+        #     self.msg.setText("Hover over the bottom right corner of the video and press ctrl-left")
+        #     x = self.msg.exec_()
+        # if val == 1:
+        #     self.msg = QMessageBox()
+        #     self.msg.setWindowTitle("Calibration")
+        #     self.msg.setText("Hover over the upper left corner of the original subtitles and press ctrl-left")
+        #     x = self.msg.exec_()
+        # if val == 2:
+        #     self.msg = QMessageBox()
+        #     self.msg.setWindowTitle("Calibration")
+        #     self.msg.setText("Hover over the bottom right corner of the original subtitles and press ctrl-left")
+        #     x = self.msg.exec_()
+        # if val == 3:
+        #     self.msg = QMessageBox()
+        #     self.msg.setWindowTitle("Calibration")
+        #     self.msg.setText("Hover over the upper left corner of the translated subtitles and press ctrl-left")
+        #     x = self.msg.exec_()
+        # if val == 4:
+        #     self.msg = QMessageBox()
+        #     self.msg.setWindowTitle("Calibration")
+        #     self.msg.setText("Hover over the bottom right corner of the translated subtitles and press ctrl-left")
+        #     x = self.msg.exec_()
+        # if val == 6:
+        #     self.msg = QMessageBox()
+        #     self.msg.setWindowTitle("Calibration")
+        #     self.msg.setText("Hover over the grey cursors at the bottom of the plugin and press ctrl-left")
+        #     x = self.msg.exec_()
+        # if val == 7:
+        #     self.msg = QMessageBox()
+        #     self.msg.setWindowTitle("Calibration")
+        #     self.msg.setText("Hover over the auto-play button at bottom right side of the plugin press ctrl-left")
+        #     x = self.msg.exec_()
+        if val == 8:
+            print('updating user cfg')
+            self.tabWidget.setEnabled(True)
+            self.sm.saver.wp.load_config()
+            self.update_user_cfg(True) 
+            
+
+    
+    def calibrate_clicked(self):
+        self.cal_thread = CalibrationThread()
+        self.cal_thread.cal_index.connect(self.calibrate_progress)
+        self.cal_thread.start()
+        
+        self.msg = QMessageBox()
+        self.msg.setWindowTitle("Calibration")
+        self.msg.setText("Hover over the eight points to calibrate. Press left control to confirm a point.")
+        x = self.msg.exec_()
+        
+        self.tabWidget.setEnabled(False)
+
+        
+        
+    
     def import_clicked(self):
         if(os.path.isfile(self.deck_exp.deck_set.path+'/{}.csv'.format(self.deck_exp.deck_set.deck))): 
             subprocess.call(['C:\\Program Files\\Anki\\anki.exe', self.deck_set.path + '{}.csv'.format(self.deck_set.deck)])
@@ -173,9 +293,9 @@ class Ui_MainWindow(object):
     
     def startProgressBar(self):
         
-        self.thread.change_value.connect(self.setProgressVal)
-        self.thread.output_log.connect(self.append_output_log)
-        self.thread.start()
+        self.exp_thread.change_value.connect(self.setProgressVal)
+        self.exp_thread.output_log.connect(self.append_output_log)
+        self.exp_thread.start()
     
     def setProgressVal(self, val):
         # print('{} received'.format(val))
@@ -192,7 +312,7 @@ class Ui_MainWindow(object):
             
     
     def export_clicked(self):
-        self.thread = ExportThread(self.deck_exp)
+        self.exp_thread = ExportThread(self.deck_exp)
         self.exportProgressBar.setEnabled(True)
         self.label_5.setEnabled(True)
         self.logOutputTextEdit.setEnabled(True)
@@ -552,10 +672,7 @@ class Ui_MainWindow(object):
         print(self.sm.saver.de.trans_lang)
         self.sm.saver.de.save_params()
 
-    def calibrate_clicked(self):
-        # calibrate_popup = calibrateDialog('Text',self)
-        start_calibration()
-        self.update_user_cfg()
+
         
     def deck_select_clicked(self):
         # create DeckViewer instance
@@ -641,8 +758,8 @@ class Ui_MainWindow(object):
             self.sm_worker.finished.connect(self.sm_worker.deleteLater)
             # self.qthread.finished.connect(self.qthread.deleteLater)
             # self.sm_worker.progress.connect(self.reportProgress)
-            if not self.thread_started: self.qthread.start()
-            self.thread_started = True
+            if not self.exp_thread_started: self.qthread.start()
+            self.exp_thread_started = True
             
             self.startRecorderButton.setEnabled(False)
             self.stopRecorderButton.setEnabled(True)
@@ -698,7 +815,7 @@ class Ui_MainWindow(object):
         self.selected_deck = '-'
         self.load_decks(self)
         self.qthread = QThread()
-        self.thread_started = False
+        self.exp_thread_started = False
         self.load_user_settings()
         
         
