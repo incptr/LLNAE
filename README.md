@@ -41,6 +41,8 @@ If you have choosen your right settings, you can press "Start Recording" in orde
 * follow along: This will save all phrases that will be encountered in Netflix while the recorder is running
 * fast forward: This will quickly jump through an episode and save all phrases. The auto-pause button needs to be enabled for this.
 
+Note that LLNAE is running in the background and it is totally fine to watch Netflix in fullscreen mode. That also ensures that you don't have to recalibrate your window once you move it. You just have to calibrate it once in fullscreen.
+
 When you are finished, press "Stop Recording" to disable the recorder.
 
 ### View
