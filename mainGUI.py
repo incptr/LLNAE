@@ -22,11 +22,9 @@ import subprocess
     # delete all should be yes no again
     # recording thread doesnt start again after stopping
     # delete deck doesnt get rid of all folders -> check for dead folders at startup
-    # include favorites in csv
     # include option to ignore image
     # load profile is useless
     # status bar for recording mode    
-    # export works only once
     # append csv disabled for now
     
     
@@ -309,6 +307,7 @@ class Ui_MainWindow(object):
         if val == 100:        
             self.importIntoAnkiButton.setEnabled(True)
             self.deck_exp.finish_export()
+            self.logOutputTextEdit.insertPlainText('-- saved file to ./data/{}/{}.csv'.format(self.deck_exp.deck_set.deck,self.deck_exp.deck_set.deck))
         else:
             self.importIntoAnkiButton.setEnabled(False)
             

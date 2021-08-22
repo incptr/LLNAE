@@ -204,7 +204,7 @@ class DeckExporter():
             
     def check_favorite(self,ind):
         
-        favorite = 0        
+        favorite = ' '        
         with open(self.deck_set.path+'favorites.cfg') as f:
             lines = f.readlines()
             
@@ -213,6 +213,8 @@ class DeckExporter():
             indx = int(vals[0])
             if indx == ind:              
                 favorite = int(vals[1])
+                if favorite == 1:
+                    favorite = '✨'
                 break
         return favorite
     
