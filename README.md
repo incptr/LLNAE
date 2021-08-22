@@ -5,6 +5,8 @@ LLNAE is a small app, designed to capture flashcards in the background while wat
 
 LLNAE provides a flashcard deck viewer that allows the user to delete and favorite cards as well as an exporter. This generates a csv file that can be directly imported into Anki. Furthermore, it can provide phonetic transcription by searching for words in a IPA dictionary. 
 
+![](https://i.ibb.co/5hdS1nG/import.png)
+
 
 
 ## Requirements
