@@ -30,6 +30,8 @@ import subprocess
     # load profile is useless
     # status bar for recording mode
     
+    # export works only once
+    
     
 # class POINT(Structure):
 #        _fields_ = [("x", c_long), ("y", c_long)] 
