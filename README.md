@@ -12,7 +12,7 @@ LLNAE provides a flashcard deck viewer that allows the user to delete and favori
 In order to get the script working, a few programs and libaries need to be added.
 
 ### External programs
-In order for LLNAE to work properly, Google Chrome needs to be run in sandboxing program. This is needed in order to avoid Netflixes screenshot blocking mechanism. A common choice for sandboxing is  [Sandboxie](https://sandboxie-plus.com/downloads/  "Sandboxie").
+In order for LLNAE to work properly, Google Chrome needs to be run in a sandboxing program. This is needed in order to avoid Netflixes screenshot blocking mechanism. A common choice for sandboxing is  [Sandboxie](https://sandboxie-plus.com/downloads/  "Sandboxie"). After installing Sandboxie, go to the file path of Google Chrome and right-click on "Run Sandboxed".
 
 Furthermore the [Language learning with Netflix](https://chrome.google.com/webstore/detail/language-learning-with-ne/hoombieeljmmljlkjmnheibnpciblicm?hl=en "LLN") extension needs to be installed and active while using Netflix. It can be turned on by a button in the video player after installation. Please note that without this plugin, the modes "follow along" and "fast forward" are not available and general functionality might be affected. 
 
