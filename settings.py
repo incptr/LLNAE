@@ -40,6 +40,7 @@ class DeckSettings():
             lines[1] = self.og_lang + '\n'
             lines[2] = self.trans_lang + '\n'
             lines[0] = str(self.ri) +'\n' 
+            lines[4] = self.description 
         with open(self.path+'params.cfg','w') as f:
             f.writelines(lines)
             

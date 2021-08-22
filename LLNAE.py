@@ -13,7 +13,7 @@ from settings import WindowSettings,DeckSettings
 from calibrate_screen import *
 from LLNSaver import *
 from state_machine import *
-
+from deck_viewer import *
     
 
     
@@ -26,135 +26,6 @@ class NewDeckPopup(QWidget):
     def pop(self,text):
         return QInputDialog.getText(self, 'New deck',text)
         
-    
-        
-    
-
-class DeckViewer():
-    def __init__(self,DeckSettings):
-        self.deck_set = DeckSettings
-        self.empty = True
-        self.idx = 1
-        self.n_cards = 0
-        self.card_number = 1
-        self.im_path =''
-        self.ph_path =''
-        self.sub_path =''
-        
-    def check_favorite(self):
-        favorite = False
-        
-        with open(self.deck_set.path+'favorites.cfg') as f:
-            lines = f.readlines()
-            
-        for line in lines:            
-            vals = line.split(' ')
-            indx = int(vals[0])
-            if indx == self.idx:                
-                favorite = int(vals[1])
-        return favorite
-        
-    def save_favorite(self,val):
-        found = False
-        with open(self.deck_set.path+'favorites.cfg') as f:
-            lines = f.readlines()   
-        for indx in lines:
-            if indx == self.idx:
-                favorite = indx.split(' ')
-                favorite[1] = val
-                lines[indx] = favorite[0] + ' ' + str(favorite[1])
-                found = True
-        
-        with open(self.deck_set.path+'favorites.cfg','w') as f:
-            f.writelines(lines)
-            if found == False and val == True:
-                f.write('{} {} \n'.format(self.idx,1))
-                
-            
-        
-        
-    def load_picture(self,mode=''):
-        
-        start_idx = self.idx
-        
-        if mode == 'init':
-            list_of_files = filter( os.path.isfile,
-                          glob.glob(self.deck_set.path + 'images/' + '*') )
-            list_of_files = sorted( list_of_files,
-                                  key = os.path.getmtime)
-            if len(list_of_files) > 0:
-                start_idx = list_of_files[0]       
-                start_idx = int(start_idx[28+len(self.deck_set.deck):-4])
-
-        
-        self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
-        self.ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,start_idx)
-        self.sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,start_idx)
-        
-        self.idx = max(start_idx,0) 
-        idx = self.idx
-        
-
-        
-        if os.path.isfile(self.im_path) and os.path.isfile(self.ph_path) and os.path.isfile(self.sub_path):
-            return [self.im_path,self.ph_path,self.sub_path,idx]
-        else:
-            return ['','','',idx]
-        
-    def get_next_picture(self,direction=0,mode='standard',deletion=0):
-        
-        # loop around 0->-1 
-        
-        # get first and last index
-        list_of_files = filter( os.path.isfile,
-                      glob.glob(self.deck_set.path + 'images/' + '*') )
-        list_of_files = sorted( list_of_files,
-                              key = os.path.getmtime)
-        
-        first_index = list_of_files[0]     
-        first_index = int(first_index[28+len(self.deck_set.deck):-4])
-        
-        last_index = list_of_files[-1]
-        last_index = int(last_index[28+len(self.deck_set.deck):-4])
-        
-        start_idx = self.idx
-        img_found = False
-        
-        while not img_found:
-            
-            if start_idx == first_index and direction == -1:
-                start_idx = last_index
-                self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
-                self.ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,start_idx)
-                self.sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,start_idx)
-                self.card_number = self.n_cards
-                break
-            
-            elif start_idx == last_index and direction == 1:
-                start_idx = first_index
-                self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
-                self.ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,start_idx)
-                self.sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,start_idx)
-                self.card_number = 1
-                break
-            
-            start_idx = start_idx+direction
-            self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
-            self.ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,start_idx)
-            self.sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,start_idx)
-            
-            if os.path.isfile(self.im_path) and os.path.isfile(self.ph_path) and os.path.isfile(self.sub_path):
-                img_found = True
-                self.card_number = self.card_number + direction - deletion
-        
-        self.idx = start_idx
-
-        if os.path.isfile(self.im_path) and os.path.isfile(self.ph_path) and os.path.isfile(self.sub_path):
-            return [self.im_path,self.ph_path,self.sub_path,self.idx]
-        else:
-            return ['','','',self.idx]
-        
-
 
 
 class StateMachineWorker(QObject):
@@ -231,6 +102,7 @@ class Ui_MainWindow(object):
     def reset_msg_clicked(self,choice):
         
 
+
         # reload values in statemachine and deckviewer
         if choice.text() == 'OK':                
             self.deck_viewer.deck_set.set_index(0)
@@ -251,24 +123,47 @@ class Ui_MainWindow(object):
             self.deckPhraseLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
             self.deckSubLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
             self.label_7.setText('Card #{} of {}'.format(0,0))
+
+            self.en_or_disable_viewer(False)
             
         else:
             print('-- Aborted')
             
     def delete_phrase_clicked(self):  
       
-        os.remove(self.deck_viewer.im_path)
-        os.remove(self.deck_viewer.ph_path)
-        os.remove(self.deck_viewer.sub_path)
-        self.deck_viewer.n_cards = self.deck_viewer.n_cards -1
-        [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=1,deletion = 1)  
-        if not im_path == '':
-            self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
-            self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
-            self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
-        self.label_7.setText('Card #{} of {}'.format(self.deck_viewer.card_number,self.deck_viewer.n_cards))
-        
-        
+        if self.tabWidget.currentIndex() == 1:
+            self.deck_viewer.save_favorite(False)
+            os.remove(self.deck_viewer.im_path)
+            os.remove(self.deck_viewer.ph_path)
+            os.remove(self.deck_viewer.sub_path)
+            self.deck_viewer.n_cards = self.deck_viewer.n_cards -1
+            [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=1,deletion = 1)  
+            if not im_path == '':
+                self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
+                self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
+                self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+                
+                fav_val = self.deck_viewer.check_favorite()
+                if fav_val:
+                        self.label_2.resize(25,25)
+                        self.importantCardCheck.setChecked(True)                 
+                else:                
+                        self.label_2.resize(25,0)
+                        self.importantCardCheck.setChecked(False)
+                        
+            self.label_7.setText('Card #{} of {}'.format(self.deck_viewer.card_number,self.deck_viewer.n_cards))
+            
+
+                    
+            if self.deck_viewer.n_cards > 0:
+                self.en_or_disable_viewer(True)
+                
+            else:
+                self.deckPhoto.setPixmap(QtGui.QPixmap('app_data/images/blank.png'))
+                self.deckPhraseLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
+                self.deckSubLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
+                self.label_7.setText('Card #{} of {}'.format(0,0))
+                self.en_or_disable_viewer(False)
     
     def reset_deck_clicked(self):
         
@@ -279,45 +174,49 @@ class Ui_MainWindow(object):
         qm.setStandardButtons(QMessageBox.Ok|QMessageBox.Cancel)
         qm.buttonClicked.connect(self.reset_msg_clicked)
         x = qm.exec_()
+        
+        
     
     def next_image_clicked(self):
         
-        [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=1)
-        
-        if not im_path == '':
-            self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
-            self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))            
-            if self.showTranslationCheck.isChecked(): self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+        if self.tabWidget.currentIndex() == 1:
+            [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=1)
             
-            self.label_7.setText('Card #{} of {}'.format(self.deck_viewer.card_number,self.deck_viewer.n_cards))
-            
-            fav_val = self.deck_viewer.check_favorite()
-            if fav_val:
-                    self.label_2.resize(25,25)
-                    self.importantCardCheck.setChecked(True)                 
-            else:                
-                    self.label_2.resize(25,0)
-                    self.importantCardCheck.setChecked(False)
+            if not im_path == '':
+                self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
+                self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))            
+                if self.showTranslationCheck.isChecked(): self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+                
+                self.label_7.setText('Card #{} of {}'.format(self.deck_viewer.card_number,self.deck_viewer.n_cards))
+                
+                fav_val = self.deck_viewer.check_favorite()
+                if fav_val:
+                        self.label_2.resize(25,25)
+                        self.importantCardCheck.setChecked(True)                 
+                else:                
+                        self.label_2.resize(25,0)
+                        self.importantCardCheck.setChecked(False)
             
     
     def prev_image_clicked(self):
         
-        [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=-1)
-        
-        if not im_path == '':
-            self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
-            self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
-            if self.showTranslationCheck.isChecked(): self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+        if self.tabWidget.currentIndex() == 1:
+            [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=-1)
             
-            self.label_7.setText('Card #{} of {}'.format(self.deck_viewer.card_number,self.deck_viewer.n_cards))
-        
-            fav_val = self.deck_viewer.check_favorite()
-            if fav_val:
-                    self.label_2.resize(25,25)
-                    self.importantCardCheck.setChecked(True)                   
-            else:                
-                    self.label_2.resize(25,0)
-                    self.importantCardCheck.setChecked(False)
+            if not im_path == '':
+                self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
+                self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
+                if self.showTranslationCheck.isChecked(): self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+                
+                self.label_7.setText('Card #{} of {}'.format(self.deck_viewer.card_number,self.deck_viewer.n_cards))
+            
+                fav_val = self.deck_viewer.check_favorite()
+                if fav_val:
+                        self.label_2.resize(25,25)
+                        self.importantCardCheck.setChecked(True)                   
+                else:                
+                        self.label_2.resize(25,0)
+                        self.importantCardCheck.setChecked(False)
         
     def update_show_translation(self):
         if self.showTranslationCheck.isChecked():
@@ -326,20 +225,61 @@ class Ui_MainWindow(object):
             self.deckSubLabel.clear()
 
     def update_favorite(self):
-        if self.importantCardCheck.isChecked():
-            with open(self.deck_viewer.im_path) as f:
-                f.fileinfo = {'favorite': 'yes'}
-                self.label_2.resize(25,25)
-                
-        else:                
-            with open(self.deck_viewer.im_path) as f:
-                f.fileinfo = {'favorite': 'no'}
-                self.label_2.resize(25,0)
+        if self.deck_viewer.n_cards > 0 and self.tabWidget.currentIndex() == 1:
+        
+            if self.importantCardCheck.isChecked():
+                with open(self.deck_viewer.im_path) as f:
+                    f.fileinfo = {'favorite': 'yes'}
+                    self.label_2.resize(25,25)
+                    
+            else:                
+                with open(self.deck_viewer.im_path) as f:
+                    f.fileinfo = {'favorite': 'no'}
+                    self.label_2.resize(25,0)
                 
                     
-        self.deck_viewer.save_favorite(self.importantCardCheck.isChecked())
+            self.deck_viewer.save_favorite(self.importantCardCheck.isChecked())
+            
+    def update_description(self):
+        self.sm.saver.de.description = self.deckDescriptionTextEdit.toPlainText()
+        self.sm.saver.de.save_params()
+            
+    def en_or_disable_viewer(self,val):
+        
+        self.importantCardCheck.setEnabled(val)
+        self.previousImageButton.setEnabled(val)
+        self.deletePhraseButton.setEnabled(val)
+        self.resetDeckButton.setEnabled(val)
+        self.nextImageButton.setEnabled(val)
+        
             
     #----------------- RECORDER --------------------------
+    
+    def update_tabs(self):
+        tab = self.tabWidget.currentIndex()
+        if tab == 1:
+            self.deck_select_clicked()
+        
+        
+    def en_or_disable_recorder(self,val):
+        self.deckDescriptionTextEdit.setEnabled(val)
+        self.originalLanguageLineEdit.setEnabled(val)
+        self.translationLineEdit.setEnabled(val)
+        self.applyDeckChangesButton.setEnabled(val)
+        self.startRecorderButton.setEnabled(val)
+    
+    def load_decks(self,MainWindow):
+        
+        _translate = QtCore.QCoreApplication.translate
+        deck_list = next(os.walk('data/'))[1]
+        # print(deck_list)
+        for idx,deck in enumerate(deck_list):
+            self.deckSelectBox.addItem(deck)
+            self.deckSelectBox.setItemText(idx+1, _translate("MainWindow", str(deck)))
+            
+        if len(deck_list) > 0:
+            self.update_deck_select()
+            self.deckDescriptionTextEdit.setEnabled(True)
     
     
     def update_deck_select(self):
@@ -356,6 +296,21 @@ class Ui_MainWindow(object):
         else:
             self.valid_deck = False
             # print('Invalid deck selected')
+            
+        if self.valid_deck:
+            self.originalLanguageLineEdit.setEnabled(True)
+            self.translationLineEdit.setEnabled(True)
+            self.applyDeckChangesButton.setEnabled(True)
+            self.startRecorderButton.setEnabled(True)
+            self.deckDescriptionTextEdit.setEnabled(True)
+            
+            if self.deck_viewer.n_cards > 0:
+                self.en_or_disable_viewer(True)
+            else:
+                self.en_or_disable_viewer(False)
+
+
+            
             
     def update_recording_mode(self):
         self.sm.mode = self.recordingModeBox.currentText()
@@ -421,6 +376,16 @@ class Ui_MainWindow(object):
             self.deckPhraseLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
             self.deckSubLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
             self.label_7.setText('Card #{} of {}'.format(0,0))
+            self.en_or_disable_viewer(False)
+        else:
+            self.en_or_disable_viewer(True)
+            fav_val = self.deck_viewer.check_favorite()
+            if fav_val:
+                    self.label_2.resize(25,25)
+                    self.importantCardCheck.setChecked(True)                 
+            else:                
+                    self.label_2.resize(25,0)
+                    self.importantCardCheck.setChecked(False)
             
         
         self.label_7.setText('Card #1 of {}'.format(self.deck_viewer.n_cards))
@@ -468,6 +433,7 @@ class Ui_MainWindow(object):
         
         self.startRecorderButton.setEnabled(True)
         self.stopRecorderButton.setEnabled(False)
+
         
     def start_recording_clicked(self):
         if self.valid_deck:
@@ -492,16 +458,9 @@ class Ui_MainWindow(object):
         
 
         
-    def load_decks(self,MainWindow):
-        _translate = QtCore.QCoreApplication.translate
-        deck_list = next(os.walk('data/'))[1]
-        # print(deck_list)
-        for idx,deck in enumerate(deck_list):
-            self.deckSelectBox.addItem(deck)
-            self.deckSelectBox.setItemText(idx+1, _translate("MainWindow", str(deck)))
+
             
-        if len(deck_list) > 0:
-            self.update_deck_select()
+        
             
     def load_user_settings(self):        
         idx = self.resolutionBox.findText(str(int(self.sm.saver.wp.res*2160)), QtCore.Qt.MatchFixedString)
@@ -534,6 +493,9 @@ class Ui_MainWindow(object):
     def initialize_settings(self):
         # load in user config
         # load in decks
+        self.en_or_disable_viewer(False)
+        self.en_or_disable_recorder(False)
+        
         self.valid_deck = False
         self.selected_deck = '-'
         self.load_decks(self)
@@ -550,6 +512,11 @@ class Ui_MainWindow(object):
         
         self.initialize_settings()
         
+        # shortcuts
+        self.deletePhraseButton.setShortcut("d")
+        self.importantCardCheck.setShortcut("f")
+        self.previousImageButton.setShortcut("left")
+        self.nextImageButton.setShortcut("right")
         
         # buttons
         self.calibrateButton.clicked.connect(self.calibrate_clicked)
@@ -573,6 +540,11 @@ class Ui_MainWindow(object):
         self.showTranslationCheck.stateChanged.connect(self.update_show_translation)
         self.importantCardCheck.stateChanged.connect(self.update_favorite)
         
+        # line edit
+        self.deckDescriptionTextEdit.textChanged.connect(self.update_description)
+        
+        # tab
+        self.tabWidget.currentChanged.connect(self.update_tabs)
         
         
     
@@ -629,7 +601,7 @@ class Ui_MainWindow(object):
         self.calibrateButton = QtWidgets.QPushButton(self.splitter)
         self.calibrateButton.setObjectName("calibrateButton")
         self.groupBox_2 = QtWidgets.QGroupBox(self.frame)
-        self.groupBox_2.setGeometry(QtCore.QRect(10, 420, 371, 111))
+        self.groupBox_2.setGeometry(QtCore.QRect(0, 420, 371, 141))
         self.groupBox_2.setObjectName("groupBox_2")
         self.resolutionBox = QtWidgets.QComboBox(self.groupBox_2)
         self.resolutionBox.setGeometry(QtCore.QRect(170, 40, 141, 21))
