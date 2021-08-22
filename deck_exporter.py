@@ -116,14 +116,30 @@ class DeckExporter():
             
         self.running_idx = self.deck_set.ri  
         
-        if self.overwrite:
-            self.start_idx = 0
+        if True:
+        # if self.overwrite:
+        #     self.start_idx = 0
             self.edit_mode ='w'
-        else:
+        # else:
             with open(self.deck_set.path+'params.cfg') as f:
                 self.lines = f.readlines()     
                 self.start_idx = int(self.lines[3])+1
-            self.edit_mode = 'a'
+                
+                list_of_files = filter( os.path.isfile,
+                              glob.glob(self.deck_set.path + 'images/' + '*') )
+                list_of_files = sorted( list_of_files,
+                                      key = os.path.getmtime)
+                
+                if len(list_of_files) == 0:
+                    return['','','',self.idx]
+
+                first_index = list_of_files[0]     
+                self.start_idx = int(first_index[19+2*len(self.deck_set.deck):-4])
+                
+                last_index = list_of_files[-1]
+                self.running_idx = int(last_index[19+2*len(self.deck_set.deck):-4])
+                
+            # self.edit_mode = 'a'
             
         files = filter( os.path.isfile,
                       glob.glob(self.deck_set.path + 'images/' + '*') )
