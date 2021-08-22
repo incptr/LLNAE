@@ -9,7 +9,7 @@ from PIL import Image
 import PIL.ImageOps
 from pynput.keyboard import Key, Listener
 import numpy as np
-import time   
+import time,shutil
 
 class LLNSaver():
     def __init__(self,de,wp):
@@ -122,18 +122,23 @@ class LLNSaver():
         im2 = PIL.ImageOps.invert(im2)
         im2.save(self.de.path + 'phrases/LLNp-{}-{}.png'.format(self.de.deck,self.de.ri))
         
-        #  Translation
-        left = self.wp.trans_ul[0]
-        top = self.wp.trans_ul[1]
-        right = self.wp.trans_br[0]
-        bottom = self.wp.trans_br[1]
-        im3 = im.crop((left, top, right, bottom))
-        ratio = (right-left)/(bottom-top)
+        if self.wp.use_trans == 'ignore translation':
+            shutil.copy('app_data/images/white.png', self.de.path + 'trans/LLNt-{}-{}.png'.format(self.de.deck,self.de.ri))
+        else:     
+            #  Translation
+            left = self.wp.trans_ul[0]
+            top = self.wp.trans_ul[1]
+            right = self.wp.trans_br[0]
+            bottom = self.wp.trans_br[1]
+            im3 = im.crop((left, top, right, bottom))
+            ratio = (right-left)/(bottom-top)
+            
+            # newsize = (500, int(500/ratio))
+            # im3 = im3.resize(newsize)
         
-        # newsize = (500, int(500/ratio))
-        # im3 = im3.resize(newsize)
-        im3 = PIL.ImageOps.invert(im3)
-        im3.save(self.de.path + 'trans/LLNt-{}-{}.png'.format(self.de.deck,self.de.ri))
+   
+            im3 = PIL.ImageOps.invert(im3)
+            im3.save(self.de.path + 'trans/LLNt-{}-{}.png'.format(self.de.deck,self.de.ri))
         
     def save_sentence(self,testing,delay):
         time.sleep(delay)

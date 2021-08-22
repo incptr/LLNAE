@@ -29,8 +29,7 @@ def on_press(key):
     if key == Key.ctrl_l:
         xy = queryMousePosition()
         print(xy)
-        return False
-        
+        return False        
 
     
 def on_release(key):
@@ -40,11 +39,9 @@ def on_release(key):
         # return False
         
         
-def start_calibration():    
-        
+def start_calibration():           
 
     print('-- Calibrating positions')
-
     
     with open('user_settings.cfg') as f:
         cfg_lines = f.readlines()        
@@ -57,8 +54,7 @@ def start_calibration():
                    listener.join() 
         cfg_lines[ind] = '{} {}\n'.format(xy[0],xy[1])
         if ind == 7:
-            break
-    
+            break    
     
     with open('user_settings.cfg','w') as f:
         f.writelines(cfg_lines)

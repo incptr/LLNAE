@@ -97,12 +97,23 @@ class DeckExporter():
             
     def initialize_export(self):
         
-        data = pd.read_csv('ipa_dict/{}.csv'.format(self.deck_set.og_lang))    
-        # print('-- IPA dictionary for language code: {} loaded.'.format(self.deck_set.og_lang))
-        data = pd.DataFrame(data)
-        self.data = data.to_numpy()
-        self.ipa_words = self.data[:,0]
-        self.ipa = self.data[:,1]
+        self.ipa_dict_exists = False
+        
+        if os.path.isfile('ipa_dict/{}.csv'.format(self.deck_set.og_lang)):
+            self.ipa_dict_exists = True
+            
+        if not self.ipa_dict_exists:
+            self.ipa_words=['','']
+            self.ipa=['','']
+            self.data = []
+        else:
+            data = pd.read_csv('ipa_dict/{}.csv'.format(self.deck_set.og_lang))    
+            # print('-- IPA dictionary for language code: {} loaded.'.format(self.deck_set.og_lang))
+            data = pd.DataFrame(data)
+            self.data = data.to_numpy()
+            self.ipa_words = self.data[:,0]
+            self.ipa = self.data[:,1]
+            
         self.running_idx = self.deck_set.ri  
         
         if self.overwrite:
@@ -205,7 +216,9 @@ class DeckExporter():
         translation = translation.split()
         translation = ' '.join(translation)
         
-        if translation == '':
+        # print(self.exp_mode)
+        
+        if translation == '' and self.exp_mode == 'standard':
             empty = True
             return [word_list_original,translation,ipa_tr,empty]
         else:
@@ -230,6 +243,7 @@ class DeckExporter():
         else:
             ipa_tr = ' '     
         
+        if not self.ipa_dict_exists: ipa_tr=' '
             
         return [word_list,translation,ipa_tr,empty]
 
