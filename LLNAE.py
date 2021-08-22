@@ -23,14 +23,11 @@ import subprocess
     # recording thread doesnt start again after stopping
     # delete deck doesnt get rid of all folders -> check for dead folders at startup
     # include favorites in csv
-    # include monolingual option
-    # include 'ignore translation'
-    # calibration crashes
     # include option to ignore image
     # load profile is useless
-    # status bar for recording mode
-    
+    # status bar for recording mode    
     # export works only once
+    # append csv disabled for now
     
     
 # class POINT(Structure):
@@ -931,7 +928,7 @@ class Ui_MainWindow(object):
         self.calibrateButton = QtWidgets.QPushButton(self.splitter)
         self.calibrateButton.setObjectName("calibrateButton")
         self.groupBox_2 = QtWidgets.QGroupBox(self.frame)
-        self.groupBox_2.setGeometry(QtCore.QRect(0, 420, 371, 141))
+        self.groupBox_2.setGeometry(QtCore.QRect(10, 420, 371, 141))
         self.groupBox_2.setObjectName("groupBox_2")
         self.resolutionBox = QtWidgets.QComboBox(self.groupBox_2)
         self.resolutionBox.setGeometry(QtCore.QRect(170, 40, 141, 21))
@@ -969,10 +966,10 @@ class Ui_MainWindow(object):
         self.applyDeckChangesButton.setGeometry(QtCore.QRect(20, 100, 148, 34))
         self.applyDeckChangesButton.setObjectName("applyDeckChangesButton")
         self.label_18 = QtWidgets.QLabel(self.frame)
-        self.label_18.setGeometry(QtCore.QRect(10, 520, 141, 21))
+        self.label_18.setGeometry(QtCore.QRect(20, 520, 141, 21))
         self.label_18.setObjectName("label_18")
         self.subtitleModeBox = QtWidgets.QComboBox(self.frame)
-        self.subtitleModeBox.setGeometry(QtCore.QRect(170, 520, 141, 25))
+        self.subtitleModeBox.setGeometry(QtCore.QRect(180, 520, 141, 25))
         self.subtitleModeBox.setObjectName("subtitleModeBox")
         self.subtitleModeBox.addItem("")
         self.subtitleModeBox.addItem("")

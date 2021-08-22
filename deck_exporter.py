@@ -114,30 +114,28 @@ class DeckExporter():
             self.ipa_words = self.data[:,0]
             self.ipa = self.data[:,1]
             
-        self.running_idx = self.deck_set.ri  
+        # append disabled for now
+        self.running_idx = self.deck_set.ri 
         
-        if True:
-        # if self.overwrite:
-        #     self.start_idx = 0
-            self.edit_mode ='w'
-        # else:
-            with open(self.deck_set.path+'params.cfg') as f:
-                self.lines = f.readlines()     
-                self.start_idx = int(self.lines[3])+1
-                
-                list_of_files = filter( os.path.isfile,
-                              glob.glob(self.deck_set.path + 'images/' + '*') )
-                list_of_files = sorted( list_of_files,
-                                      key = os.path.getmtime)
-                
-                if len(list_of_files) == 0:
-                    return['','','',self.idx]
 
-                first_index = list_of_files[0]     
-                self.start_idx = int(first_index[19+2*len(self.deck_set.deck):-4])
-                
-                last_index = list_of_files[-1]
-                self.running_idx = int(last_index[19+2*len(self.deck_set.deck):-4])
+        self.edit_mode ='w' 
+        with open(self.deck_set.path+'params.cfg') as f:
+            self.lines = f.readlines()     
+            self.start_idx = int(self.lines[3])+1
+            
+            list_of_files = filter( os.path.isfile,
+                          glob.glob(self.deck_set.path + 'images/' + '*') )
+            list_of_files = sorted( list_of_files,
+                                  key = os.path.getmtime)
+            
+            if len(list_of_files) == 0:
+                return['','','',self.idx]
+
+            first_index = list_of_files[0]     
+            self.start_idx = int(first_index[19+2*len(self.deck_set.deck):-4])
+            
+            last_index = list_of_files[-1]
+            self.running_idx = int(last_index[19+2*len(self.deck_set.deck):-4])
                 
             # self.edit_mode = 'a'
             
@@ -146,11 +144,7 @@ class DeckExporter():
         files = sorted( files,
                               key = os.path.getmtime) 
         self.exp_length = len(files)
-        
-        # print('-- Loaded running index value as ' + str(self.running_idx))    
-        
 
-        
 
     
     def finish_export(self):      
