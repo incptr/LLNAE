@@ -112,15 +112,13 @@ class ExportThread(QThread):
             # spamwriter.writerow(['Front', 'Back'])
             # print('-- Starting csv writer.')
             
-            if self.deck_exp.start_idx ==  self.deck_exp.running_idx+1:
+            if self.deck_exp.start_idx ==  self.deck_exp.running_idx:
                 print('-- CSV was already created, save new phrases first.')
                 return False
         
-            
+            prog_idx = 0
             for ind in range(self.deck_exp.start_idx,self.deck_exp.running_idx+1):
-                
-                self.change_value.emit(int(ind*100/self.deck_exp.exp_length))
-                self.output_log.emit('-- exporting card #{} of {}\n'.format(ind,self.deck_exp.exp_length))
+
                 
                 if not os.path.isfile(self.deck_exp.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_exp.deck_set.deck,ind)):
                     continue
@@ -131,6 +129,10 @@ class ExportThread(QThread):
                     line_3 = translation
                     line_4 = ipa
                     spamwriter.writerow([line_1, line_2, line_3,line_4]) 
+                    
+                prog_idx = prog_idx +1
+                self.change_value.emit(int(prog_idx*100/self.deck_exp.exp_length))
+                self.output_log.emit('-- exporting card #{} of {}\n'.format(prog_idx,self.deck_exp.exp_length))
     
     def run(self):
         
