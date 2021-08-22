@@ -119,13 +119,14 @@ class ExportThread(QThread):
                 
                 if not os.path.isfile(self.deck_exp.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_exp.deck_set.deck,ind)):
                     continue
-                sentence,translation,ipa,empty = self.deck_exp.convert_to_ipa(ind)
+                [sentence,translation,ipa,empty,favorite] = self.deck_exp.get_export_values(ind)
                 if not empty:
                     line_1 = '<img src="LLNi-{}-{}.png">'.format(self.deck_exp.deck_set.deck,ind)
                     line_2 = sentence
                     line_3 = translation
                     line_4 = ipa
-                    spamwriter.writerow([line_1, line_2, line_3,line_4]) 
+                    line_5 = favorite
+                    spamwriter.writerow([line_1, line_2, line_3,line_4,line_5]) 
                     
                 prog_idx = prog_idx +1
                 self.change_value.emit(int(prog_idx*100/self.deck_exp.exp_length))
@@ -792,7 +793,7 @@ class Ui_MainWindow(object):
         def create_cfg_str(val1,val2=['','']):
             x0 = val1[0]
             y0 = val1[1]
-            x1 = val1[0]
+            x1 = val2[0]
             y1 = val2[1]
             return  '{}:{}-{}:{}'.format(x0,y0,x1,y1)   
     

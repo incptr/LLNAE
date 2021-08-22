@@ -22,7 +22,7 @@ import progressbar, time, os
 import shutil, os, progressbar
 from settings import *
 import csv,glob
-from LLNAE import NewDeckPopup
+from mainGUI import NewDeckPopup
 try:
     from PIL import Image
 except ImportError:
@@ -201,9 +201,25 @@ class DeckExporter():
             return True
         else:
                 return False
-    
-    def convert_to_ipa(self,index):
+            
+    def check_favorite(self,ind):
         
+        favorite = 0        
+        with open(self.deck_set.path+'favorites.cfg') as f:
+            lines = f.readlines()
+            
+        for line in lines:            
+            vals = line.split(' ')
+            indx = int(vals[0])
+            if indx == ind:              
+                favorite = int(vals[1])
+                break
+        return favorite
+    
+    def get_export_values(self,index):
+        
+        
+        favorite = self.check_favorite(index)
         ipa_tr = ''
         pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'    
         img1 = Image.open(self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,index))
@@ -226,23 +242,37 @@ class DeckExporter():
         translation = translation.split()
         translation = ' '.join(translation)
         
+        
+        
         # print(self.exp_mode)
         
         if translation == '' and self.exp_mode == 'standard':
             empty = True
-            return [word_list_original,translation,ipa_tr,empty]
+            return [word_list_original,translation,ipa_tr,empty,favorite]
         else:
             empty = False
             
             
         if self.use_ipa:          
         
+            firstWord = True
             for word in words:
-            
+                
+                if firstWord:
+                    firstWord = False
+                    # print(word.lower())
+                    row = np.where(self.ipa_words ==  word.lower())[0]
+                    # print(row)
+                
                 row = np.where(self.ipa_words == word)[0]
+                if row.size == 0:
+                    row = np.where(self.ipa_words == word.lower())[0]
+                if row.size == 0:
+                    row = np.where(self.ipa_words == word.capitalize())[0]
                 if row.size > 0:
                     row = int(row[0])
                     new_tr = self.ipa[row]
+                
                 else:
                     new_tr = '--'
                 ipa_tr = ipa_tr + ' ' + new_tr
@@ -255,6 +285,6 @@ class DeckExporter():
         
         if not self.ipa_dict_exists: ipa_tr=' '
             
-        return [word_list,translation,ipa_tr,empty]
+        return [word_list,translation,ipa_tr,empty,favorite]
 
     
