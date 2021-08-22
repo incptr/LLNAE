@@ -62,7 +62,7 @@ class DeckViewer():
                                   key = os.path.getmtime)
             if len(list_of_files) > 0:
                 start_idx = list_of_files[0]       
-                start_idx = int(start_idx[28+len(self.deck_set.deck):-4])
+                start_idx = int(start_idx[19+2*len(self.deck_set.deck):-4])
 
         
         self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
@@ -93,10 +93,10 @@ class DeckViewer():
             return['','','',self.idx]
 
         first_index = list_of_files[0]     
-        first_index = int(first_index[28+len(self.deck_set.deck):-4])
+        first_index = int(first_index[19+2*len(self.deck_set.deck):-4])
         
         last_index = list_of_files[-1]
-        last_index = int(last_index[28+len(self.deck_set.deck):-4])
+        last_index = int(last_index[19+2*len(self.deck_set.deck):-4])
 
         
         start_idx = self.idx

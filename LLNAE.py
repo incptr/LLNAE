@@ -14,8 +14,8 @@ from calibrate_screen import *
 from LLNSaver import *
 from state_machine import *
 from deck_viewer import *
-    
-
+from deck_exporter import*
+import subprocess
     
 
 class NewDeckPopup(QWidget):
@@ -23,10 +23,9 @@ class NewDeckPopup(QWidget):
         super().__init__()
         
 
-    def pop(self,text):
-        return QInputDialog.getText(self, 'New deck',text)
+    def pop(self,text,title='New deck'):
+        return QInputDialog.getText(self, title,text)
         
-
 
 class StateMachineWorker(QObject):
     
@@ -96,6 +95,51 @@ class Ui_MainWindow(object):
            with open(base_path+'favorites.cfg', 'w') as f:
                f.write('')
         return True
+    #------------------- EXPORTER-----------------------
+    
+    def import_clicked(self):
+        if(os.path.isfile(self.deck_exp.deck_set.path+'/{}.csv'.format(self.deck_exp.deck_set.deck))): 
+            subprocess.call(['C:\\Program Files\\Anki\\anki.exe', self.deck_set.path + '{}.csv'.format(self.deck_set.deck)])
+    
+    def export_clicked(self):
+        if self.deck_exp.export():
+            self.importIntoAnkiButton.setEnabled(True)
+        else:
+            self.importIntoAnkiButton.setEnabled(False)
+    
+    def update_exp_mode(self):
+        self.deck_exp.exp_mode = self.ankiCardStyleBox.currentText()
+        self.deck_exp.save_config() 
+        
+    def update_use_ipa(self):
+        if self.searchForIpaCheck.isChecked():
+            self.deck_exp.search_ipa  = 1
+        else:                
+            self.deck_exp.search_ipa  = 0
+        self.deck_exp.save_config()
+        
+    def update_open_csv(self):
+        if self.openCsvAfterwardsCheck.isChecked():
+            self.deck_exp.open_csv  = 1
+        else:                
+            self.deck_exp.open_csv  = 0
+        self.deck_exp.save_config()
+        
+    def update_overwrite_csv(self):
+        if self.overwriteCsvCheck.isChecked():
+            self.deck_exp.overwrite  = 1
+        else:                
+            self.deck_exp.overwrite  = 0
+        self.deck_exp.save_config()
+        
+    def update_copy_images(self):
+        if self.copyImagesToAnkiCheck.isChecked():
+            self.deck_exp.copy_img  = 1
+        else:                
+            self.deck_exp.copy_img  = 0
+        self.deck_exp.save_config()
+        
+
     
     #----------------- VIEWER --------------------------
     
@@ -228,14 +272,10 @@ class Ui_MainWindow(object):
         if self.deck_viewer.n_cards > 0 and self.tabWidget.currentIndex() == 1:
         
             if self.importantCardCheck.isChecked():
-                with open(self.deck_viewer.im_path) as f:
-                    f.fileinfo = {'favorite': 'yes'}
-                    self.label_2.resize(25,25)
+                self.label_2.resize(25,25)
                     
             else:                
-                with open(self.deck_viewer.im_path) as f:
-                    f.fileinfo = {'favorite': 'no'}
-                    self.label_2.resize(25,0)
+                self.label_2.resize(25,0)
                 
                     
             self.deck_viewer.save_favorite(self.importantCardCheck.isChecked())
@@ -259,6 +299,11 @@ class Ui_MainWindow(object):
         tab = self.tabWidget.currentIndex()
         if tab == 1:
             self.deck_select_clicked()
+        if tab == 2:
+            if(os.path.isfile(self.deck_exp.deck_set.path+'/{}.csv'.format(self.deck_exp.deck_set.deck))):            
+                self.importIntoAnkiButton.setEnabled(True)
+            else:
+                self.importIntoAnkiButton.setEnabled(False)
         
         
     def en_or_disable_recorder(self,val):
@@ -341,9 +386,6 @@ class Ui_MainWindow(object):
             sleep(1)
             self.reportProgress(i + 1)
             
-    # def deck_select_clicked(self):
-        
-
     def apply_deck_clicked(self):
         self.sm.saver.de.og_lang = self.originalLanguageLineEdit.text()
         self.sm.saver.de.trans_lang = self.translationLineEdit.text()
@@ -357,7 +399,11 @@ class Ui_MainWindow(object):
         self.update_user_cfg()
         
     def deck_select_clicked(self):
+        # create DeckViewer instance
         self.deck_viewer = DeckViewer(self.sm.saver.de)
+        # create DeckExporter instance
+        self.deck_exp = DeckExporter(self.sm.saver.de)
+        
         [im_path,ph_path,sub_path,idx] = self.deck_viewer.load_picture(mode='init')
         
         if not im_path == '':
@@ -389,10 +435,7 @@ class Ui_MainWindow(object):
             
         
         self.label_7.setText('Card #1 of {}'.format(self.deck_viewer.n_cards))
-        self.deckDescriptionTextEdit.setPlainText(self.sm.saver.de.description)
-        
-            
-            
+        self.deckDescriptionTextEdit.setPlainText(self.sm.saver.de.description)           
         return
     
     def new_deck_clicked(self):
@@ -417,15 +460,7 @@ class Ui_MainWindow(object):
         else:
             return
 
-        # sys.exit(app.exec_())
-        # qm = QMessageBox()
-        # qm.setWindowTitle('Warning')
-        # qm.setText('Are you sure you want to delete all {} flashcards?'.format(self.deck_viewer.n_cards))
-        # qm.setIcon(QMessageBox.Question)
-        # qm.setStandardButtons(QMessageBox.Ok|QMessageBox.Cancel)
-        # qm.buttonClicked.connect(self.reset_msg_clicked)
-        # x = qm.exec_()
-        
+
     def stop_recording_clicked(self):
         self.sm_worker.sm.shutdown_req = True
         if not isinstance(self.sm_worker.sm.listener, list):
@@ -455,21 +490,23 @@ class Ui_MainWindow(object):
         else:
             print('Select a valid deck first.')
             
-        
-
-        
 
             
+    def load_user_settings(self):       
         
-            
-    def load_user_settings(self):        
         idx = self.resolutionBox.findText(str(int(self.sm.saver.wp.res*2160)), QtCore.Qt.MatchFixedString)
         self.resolutionBox.setCurrentIndex(idx)
         idx = self.recordingModeBox.findText(self.sm.saver.wp.mode, QtCore.Qt.MatchFixedString)
         self.recordingModeBox.setCurrentIndex(idx)
         idx = self.subtitleModeBox.findText(self.sm.saver.wp.use_trans, QtCore.Qt.MatchFixedString)
         self.subtitleModeBox.setCurrentIndex(idx)
-
+        idx = self.ankiCardStyleBox.findText(self.deck_exp.exp_mode, QtCore.Qt.MatchFixedString)
+        self.ankiCardStyleBox.setCurrentIndex(idx)
+        
+        self.searchForIpaCheck.setChecked(self.deck_exp.use_ipa) 
+        self.openCsvAfterwardsCheck.setChecked(self.deck_exp.open_csv) 
+        self.overwriteCsvCheck.setChecked(self.deck_exp.overwrite) 
+        self.copyImagesToAnkiCheck.setChecked(self.deck_exp.copy_img) 
         
     
     def update_user_cfg(self,profile=0):
@@ -509,6 +546,7 @@ class Ui_MainWindow(object):
         self.deck_set = DeckSettings('', '', '',False)        
         self.saver = LLNSaver(self.deck_set,self.win_set)
         self.sm = StateMachine(self.saver,self.win_set.mode)  
+        self.deck_exp = DeckExporter(self.sm.saver.de)
         
         self.initialize_settings()
         
@@ -529,16 +567,23 @@ class Ui_MainWindow(object):
         self.deletePhraseButton.clicked.connect(self.delete_phrase_clicked)
         self.applyDeckChangesButton.clicked.connect(self.apply_deck_clicked)
         self.newDeckButton.clicked.connect(self.new_deck_clicked)
+        self.exportCsvButton.clicked.connect(self.export_clicked)  
+        self.importIntoAnkiButton.clicked.connect(self.import_clicked)  
         
         # boxes
         self.resolutionBox.currentIndexChanged.connect(self.update_resolution)
         self.recordingModeBox.currentIndexChanged.connect(self.update_recording_mode)
         self.deckSelectBox.currentIndexChanged.connect(self.update_deck_select)
         self.subtitleModeBox.currentIndexChanged.connect(self.update_subtitle_mode)
+        self.ankiCardStyleBox.currentIndexChanged.connect(self.update_exp_mode)
         
         # checks
         self.showTranslationCheck.stateChanged.connect(self.update_show_translation)
-        self.importantCardCheck.stateChanged.connect(self.update_favorite)
+        self.importantCardCheck.stateChanged.connect(self.update_favorite)        
+        self.searchForIpaCheck.stateChanged.connect(self.update_use_ipa)
+        self.openCsvAfterwardsCheck.stateChanged.connect(self.update_open_csv)
+        self.overwriteCsvCheck.stateChanged.connect(self.update_overwrite_csv)
+        self.copyImagesToAnkiCheck.stateChanged.connect(self.update_copy_images)
         
         # line edit
         self.deckDescriptionTextEdit.textChanged.connect(self.update_description)
@@ -639,10 +684,10 @@ class Ui_MainWindow(object):
         self.applyDeckChangesButton.setGeometry(QtCore.QRect(20, 100, 148, 34))
         self.applyDeckChangesButton.setObjectName("applyDeckChangesButton")
         self.label_18 = QtWidgets.QLabel(self.frame)
-        self.label_18.setGeometry(QtCore.QRect(20, 520, 141, 21))
+        self.label_18.setGeometry(QtCore.QRect(10, 520, 141, 21))
         self.label_18.setObjectName("label_18")
         self.subtitleModeBox = QtWidgets.QComboBox(self.frame)
-        self.subtitleModeBox.setGeometry(QtCore.QRect(180, 520, 141, 25))
+        self.subtitleModeBox.setGeometry(QtCore.QRect(170, 520, 141, 25))
         self.subtitleModeBox.setObjectName("subtitleModeBox")
         self.subtitleModeBox.addItem("")
         self.subtitleModeBox.addItem("")
@@ -855,8 +900,8 @@ class Ui_MainWindow(object):
         self.resetDeckButton.setText(_translate("MainWindow", "Reset Deck"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.viewTab), _translate("MainWindow", "View"))
         self.groupBox_5.setTitle(_translate("MainWindow", "Settings"))
-        self.ankiCardStyleBox.setItemText(0, _translate("MainWindow", "Standard"))
-        self.ankiCardStyleBox.setItemText(1, _translate("MainWindow", "Monolingual"))
+        self.ankiCardStyleBox.setItemText(0, _translate("MainWindow", "standard"))
+        self.ankiCardStyleBox.setItemText(1, _translate("MainWindow", "monolingual"))
         self.label_3.setText(_translate("MainWindow", "Anki card style"))
         self.searchForIpaCheck.setText(_translate("MainWindow", "Find words in IPA dictionary"))
         self.openCsvAfterwardsCheck.setText(_translate("MainWindow", "Open csv file after completion"))
