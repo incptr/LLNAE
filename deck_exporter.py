@@ -28,31 +28,31 @@ try:
 except ImportError:
     import Image
     
-# settings
-deck = 'icelandic'
-overwrite = True
-copy_files = True
+# # settings
+# deck = 'icelandic'
+# overwrite = True
+# copy_files = True
 
 
-def load_deck_config():
-    return
-#--------------------------------------------
-    de = DeckSettings(deck, '', '')
-    de.load_params()
-    original_lang = de.og_lang[:-1]
-    trans_lang = de.trans_lang[:-1]
-    deck_name = de.deck
-    running_index = de.ri
+# def load_deck_config():
+#     return
+# #--------------------------------------------
+#     de = DeckSettings(deck, '', '')
+#     de.load_params()
+#     original_lang = de.og_lang[:-1]
+#     trans_lang = de.trans_lang[:-1]
+#     deck_name = de.deck
+#     running_index = de.ri
     
-    print('-- Starting CSV Anki generator v0.1.')
-    data = pd.read_csv('ipa_dict/{}.csv'.format(original_lang))    
-    print('-- IPA dictionary for language code: {} loaded.'.format(original_lang))
-    data = pd.DataFrame(data)
-    data = data.to_numpy()
-    ipa_words = data[:,0]
-    ipa = data[:,1]
+#     # print('-- Starting CSV Anki generator v0.1.')
+#     data = pd.read_csv('ipa_dict/{}.csv'.format(original_lang))    
+#     # print('-- IPA dictionary for language code: {} loaded.'.format(original_lang))
+#     data = pd.DataFrame(data)
+#     data = data.to_numpy()
+#     ipa_words = data[:,0]
+#     ipa = data[:,1]
 
-# settings
+# # settings
 
 
 
@@ -68,6 +68,11 @@ class DeckExporter():
         self.copy_img = False
         self.load_config()
         self.profile_name = ''
+        files = filter( os.path.isfile,
+                      glob.glob(self.deck_set.path + 'images/' + '*') )
+        files = sorted( files,
+                              key = os.path.getmtime) 
+        self.exp_length = len(files)
         
     def load_config(self):       
         # to-do enable different user settings/profiles
@@ -89,58 +94,46 @@ class DeckExporter():
             lines[4] = str(self.copy_img) + '\n'
         with open('exp_settings.cfg','w') as f:
             f.writelines(lines)
+            
+    def initialize_export(self):
         
-    def export(self):
-        # check if valid at some point? / dis/enable buttons / export with settings
         data = pd.read_csv('ipa_dict/{}.csv'.format(self.deck_set.og_lang))    
-        print('-- IPA dictionary for language code: {} loaded.'.format(self.deck_set.og_lang))
+        # print('-- IPA dictionary for language code: {} loaded.'.format(self.deck_set.og_lang))
         data = pd.DataFrame(data)
         self.data = data.to_numpy()
         self.ipa_words = self.data[:,0]
         self.ipa = self.data[:,1]
-        running_idx = self.deck_set.ri  
+        self.running_idx = self.deck_set.ri  
         
         if self.overwrite:
-            start_idx = 0
-            edit_mode ='w'
+            self.start_idx = 0
+            self.edit_mode ='w'
         else:
             with open(self.deck_set.path+'params.cfg') as f:
-                lines = f.readlines()     
-                start_idx = int(lines[3])+1
-            edit_mode = 'a'
-        
-        print('-- Loaded running index value as ' + str(running_idx))    
-        
-        with open(self.deck_set.path + '{}.csv'.format(self.deck_set.deck), edit_mode, newline='',encoding='utf-8') as csvfile:
+                self.lines = f.readlines()     
+                self.start_idx = int(self.lines[3])+1
+            self.edit_mode = 'a'
             
-            spamwriter = csv.writer(csvfile, delimiter=',',
-                                    quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            # spamwriter.writerow(['Front', 'Back'])
-            print('-- Starting csv writer.')
-            
-            if start_idx ==  running_idx+1:
-                print('-- CSV was already created, save new phrases first.')
-                return False
-            
-            for ind in range(start_idx,running_idx+1):
-              #  print('-- Phrase {}: processing images.'.format(ind))
-                if not os.path.isfile(self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,ind)):
-                    continue
-                sentence,translation,ipa,empty = self.convert_to_ipa(ind)
-                if not empty:
-                    line_1 = '<img src="LLNi-{}-{}.png">'.format(self.deck_set.deck,ind)
-                    line_2 = sentence
-                    line_3 = translation
-                    line_4 = ipa
-                    spamwriter.writerow([line_1, line_2, line_3,line_4])
-                    
-            with open(self.deck_set.path+'params.cfg') as f:
-                lines = f.readlines()        
-                lines[3] = str(running_idx) + '\n'
-            with open(self.deck_set.path + 'params.cfg','w') as f:
-                f.writelines(lines)
+        files = filter( os.path.isfile,
+                      glob.glob(self.deck_set.path + 'images/' + '*') )
+        files = sorted( files,
+                              key = os.path.getmtime) 
+        self.exp_length = len(files)
         
+        # print('-- Loaded running index value as ' + str(self.running_idx))    
         
+
+        
+
+    
+    def finish_export(self):      
+        with open(self.deck_set.path+'params.cfg') as f:
+            lines = f.readlines()        
+            lines[3] = str(self.running_idx) + '\n'
+        with open(self.deck_set.path + 'params.cfg','w') as f:
+            f.writelines(lines)
+    
+    
         if self.copy_img:
             self.copy_images()
             
@@ -148,8 +141,6 @@ class DeckExporter():
             # fileName = listbox_1.get(ACTIVE)
             os.system("notepad.exe "  + self.deck_set.path + '{}.csv'.format(self.deck_set.deck))
         return True
-    
-            
     
     def copy_images(self):   
         
@@ -161,14 +152,14 @@ class DeckExporter():
             ok = True
         
         if ok:        
-            print('-- Copying files to Anki directory.')
+            # print('-- Copying files to Anki directory.')
             self.deck_set.load_params()
             deck_name = self.deck_set.deck
             running_index = self.deck_set.ri
             start_index = self.deck_set.csv_savepoint
             
             if self.overwrite:
-                print('overwrite')
+                # print('overwrite')
                 start_index = 0
                 files = filter( os.path.isfile,
                               glob.glob(self.deck_set.path + 'images/' + '*') )
@@ -178,11 +169,11 @@ class DeckExporter():
                 # fix only partly appending
                 files = []        
                 for i in range(start_index,running_index+1):
-                    if i == max_index:
-                        break
+                    # if i == max_index:
+                    #     break
                     files.append(self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,i))
                     
-            print(files)
+            # print(files)
             for f in files:
                 
                 shutil.copy(f, os.getenv('APPDATA') + '/Anki2/{}/collection.media'.format(self.profile_name))

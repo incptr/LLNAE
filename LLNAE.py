@@ -16,15 +16,81 @@ from state_machine import *
 from deck_viewer import *
 from deck_exporter import*
 import subprocess
-    
 
+# to-do:
+    # if no more cards in view tab -> change text to delete metadata:
+    # delete all should be yes no again
+    # recording thread doesnt start again after stopping
+    # delete deck doesnt get rid of all folders -> check for dead folders at startup
+    # include favorites in csv
+    # include monolingual option
+    # include 'ignore translation'
+    # calibration crashes
+    # include option to ignore image
+    # load profile is useless
+    # status bar for recording mode
+    
+class CalibrationThread(QThread):
+    pass
+
+class ExportThread(QThread):
+    
+    change_value = pyqtSignal(int)
+    output_log = pyqtSignal(str)
+    
+    def __init__(self,DeckExporter):
+        super(ExportThread,self).__init__()
+        self.deck_exp = DeckExporter
+        
+    def export_loop(self):
+        
+        with open(self.deck_exp.deck_set.path + '{}.csv'.format(self.deck_exp.deck_set.deck), self.deck_exp.edit_mode, newline='',encoding='utf-8') as csvfile:
+            
+            spamwriter = csv.writer(csvfile, delimiter=',',
+                                    quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            # spamwriter.writerow(['Front', 'Back'])
+            # print('-- Starting csv writer.')
+            
+            if self.deck_exp.start_idx ==  self.deck_exp.running_idx+1:
+                print('-- CSV was already created, save new phrases first.')
+                return False
+        
+            
+            for ind in range(self.deck_exp.start_idx,self.deck_exp.running_idx+1):
+                
+                self.change_value.emit(int(ind*100/self.deck_exp.exp_length))
+                self.output_log.emit('-- exporting card #{} of {}\n'.format(ind,self.deck_exp.exp_length))
+                
+                if not os.path.isfile(self.deck_exp.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_exp.deck_set.deck,ind)):
+                    continue
+                sentence,translation,ipa,empty = self.deck_exp.convert_to_ipa(ind)
+                if not empty:
+                    line_1 = '<img src="LLNi-{}-{}.png">'.format(self.deck_exp.deck_set.deck,ind)
+                    line_2 = sentence
+                    line_3 = translation
+                    line_4 = ipa
+                    spamwriter.writerow([line_1, line_2, line_3,line_4]) 
+    
+    def run(self):
+        
+        self.deck_exp.initialize_export()
+        self.export_loop()
+
+        
+
+            
+            
+            
 class NewDeckPopup(QWidget):
     def __init__(self):
         super().__init__()
         
 
     def pop(self,text,title='New deck'):
-        return QInputDialog.getText(self, title,text)
+        [txt,ok] = QInputDialog.getText(self, title,text)
+        if txt == '':
+            txt = ' '
+        return [txt,ok]
         
 
 class StateMachineWorker(QObject):
@@ -38,7 +104,7 @@ class StateMachineWorker(QObject):
     def run(self):
 
         self.sm.mode_loop()
-        return
+
 
 
 class Ui_MainWindow(object):
@@ -79,7 +145,8 @@ class Ui_MainWindow(object):
                 check_directory(base_path+'/images') or \
                 check_directory(base_path+'/phrases',True) or \
                 check_directory(base_path+'/trans',True)):
-            print('folders created')
+            # print('folders created')
+            pass
         
         if os.path.isfile(base_path+'params.cfg'):
             if not os.stat(base_path+'params.cfg').st_size:
@@ -101,11 +168,44 @@ class Ui_MainWindow(object):
         if(os.path.isfile(self.deck_exp.deck_set.path+'/{}.csv'.format(self.deck_exp.deck_set.deck))): 
             subprocess.call(['C:\\Program Files\\Anki\\anki.exe', self.deck_set.path + '{}.csv'.format(self.deck_set.deck)])
     
-    def export_clicked(self):
-        if self.deck_exp.export():
+    def append_output_log(self,text):
+        self.logOutputTextEdit.insertPlainText(text)
+    
+    def startProgressBar(self):
+        
+        self.thread.change_value.connect(self.setProgressVal)
+        self.thread.output_log.connect(self.append_output_log)
+        self.thread.start()
+    
+    def setProgressVal(self, val):
+        # print('{} received'.format(val))
+        
+        old = self.exportProgressBar.value()
+        new = val
+        self.exportProgressBar.setValue(new)
+        
+        if val == 100:        
             self.importIntoAnkiButton.setEnabled(True)
+            self.deck_exp.finish_export()
         else:
             self.importIntoAnkiButton.setEnabled(False)
+            
+    
+    def export_clicked(self):
+        self.thread = ExportThread(self.deck_exp)
+        self.exportProgressBar.setEnabled(True)
+        self.label_5.setEnabled(True)
+        self.logOutputTextEdit.setEnabled(True)
+        self.startProgressBar()
+        
+        
+        
+        return
+        
+        # if self.deck_exp.export():
+        #     self.importIntoAnkiButton.setEnabled(True)
+        # else:
+        #     self.importIntoAnkiButton.setEnabled(False)
     
     def update_exp_mode(self):
         self.deck_exp.exp_mode = self.ankiCardStyleBox.currentText()
@@ -143,12 +243,36 @@ class Ui_MainWindow(object):
     
     #----------------- VIEWER --------------------------
     
-    def reset_msg_clicked(self,choice):
+    def reset_deck_clicked(self):
         
+        qm = QMessageBox()
+        qm.setWindowTitle('Warning')
+        qm.setText('Do you want to delete all metadata as well?'.format(self.deck_viewer.n_cards))
+        qm.setIcon(QMessageBox.Question)
+        qm.setStandardButtons(QMessageBox.Yes|QMessageBox.No)
+        qm.buttonClicked.connect(self.reset_msg_clicked)
+        x = qm.exec_()
+        
+    def reinitialize_deck_fields(self):
+        self.en_or_disable_viewer(False)
+        
+        index = self.deckSelectBox.findText(self.deck_viewer.deck_set.deck, QtCore.Qt.MatchFixedString)
+        self.deckSelectBox.removeItem(index)
+        
+        index = max(0,index-1)
+        index = min(index,self.deckSelectBox.count())            
+        self.deckSelectBox.setCurrentIndex(index) 
+        if self.deckSelectBox.count() > 0:
+            self.update_deck_load()
+        self.deckDescriptionTextEdit.setPlainText('')
+        self.originalLanguageLineEdit.setText('')
+        self.translationLineEdit.setText('')
+    
+    def reset_msg_clicked(self,choice):    
 
 
         # reload values in statemachine and deckviewer
-        if choice.text() == 'OK':                
+        if choice.text() == 'No':                
             self.deck_viewer.deck_set.set_index(0)
             self.sm.saver.de.set_index(0)
             
@@ -161,7 +285,7 @@ class Ui_MainWindow(object):
             dir = self.deck_viewer.deck_set.path + 'trans'
             for f in os.listdir(dir):
                 os.remove(os.path.join(dir, f))
-            print('++ Index reset to 0. All images deleted')
+            # print('++ Index reset to 0. All images deleted')
             
             self.deckPhoto.setPixmap(QtGui.QPixmap('app_data/images/blank.png'))
             self.deckPhraseLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
@@ -169,10 +293,36 @@ class Ui_MainWindow(object):
             self.label_7.setText('Card #{} of {}'.format(0,0))
 
             self.en_or_disable_viewer(False)
+            self.resetDeckButton.setEnabled(True)
             
         else:
-            print('-- Aborted')
+            self.deck_viewer.deck_set.set_index(0)
+            self.sm.saver.de.set_index(0)
             
+            dir = self.deck_viewer.deck_set.path + 'images'
+            for f in os.listdir(dir):
+                os.remove(os.path.join(dir, f))
+            dir = self.deck_viewer.deck_set.path + 'phrases'
+            for f in os.listdir(dir):
+                os.remove(os.path.join(dir, f))
+            dir = self.deck_viewer.deck_set.path + 'trans'
+            for f in os.listdir(dir):
+                os.remove(os.path.join(dir, f))
+                
+            dir = self.deck_viewer.deck_set.path
+            os.remove(dir + 'params.cfg')
+            os.remove(dir + 'favorites.cfg')
+
+            # print('++ Index reset to 0. All images deleted')
+            
+            self.deckPhoto.setPixmap(QtGui.QPixmap('app_data/images/blank.png'))
+            self.deckPhraseLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
+            self.deckSubLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
+            self.label_7.setText('Card #{} of {}'.format(0,0))
+
+            self.reinitialize_deck_fields()
+            
+          
     def delete_phrase_clicked(self):  
       
         if self.tabWidget.currentIndex() == 1:
@@ -208,16 +358,9 @@ class Ui_MainWindow(object):
                 self.deckSubLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
                 self.label_7.setText('Card #{} of {}'.format(0,0))
                 self.en_or_disable_viewer(False)
+                self.resetDeckButton.setEnabled(True)
     
-    def reset_deck_clicked(self):
-        
-        qm = QMessageBox()
-        qm.setWindowTitle('Warning')
-        qm.setText('Are you sure you want to delete all {} flashcards?'.format(self.deck_viewer.n_cards))
-        qm.setIcon(QMessageBox.Question)
-        qm.setStandardButtons(QMessageBox.Ok|QMessageBox.Cancel)
-        qm.buttonClicked.connect(self.reset_msg_clicked)
-        x = qm.exec_()
+
         
         
     
@@ -281,8 +424,12 @@ class Ui_MainWindow(object):
             self.deck_viewer.save_favorite(self.importantCardCheck.isChecked())
             
     def update_description(self):
-        self.sm.saver.de.description = self.deckDescriptionTextEdit.toPlainText()
-        self.sm.saver.de.save_params()
+        if self.deckSelectBox.count() > 0:
+            if self.deckDescriptionTextEdit.toPlainText() == '':
+                return
+            else:
+                self.sm.saver.de.description = self.deckDescriptionTextEdit.toPlainText()
+                self.sm.saver.de.save_params()
             
     def en_or_disable_viewer(self,val):
         
@@ -297,8 +444,10 @@ class Ui_MainWindow(object):
     
     def update_tabs(self):
         tab = self.tabWidget.currentIndex()
+        if tab == 0:
+            self.update_deck_load()
         if tab == 1:
-            self.deck_select_clicked()
+            self.update_deck_load()
         if tab == 2:
             if(os.path.isfile(self.deck_exp.deck_set.path+'/{}.csv'.format(self.deck_exp.deck_set.deck))):            
                 self.importIntoAnkiButton.setEnabled(True)
@@ -318,41 +467,51 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         deck_list = next(os.walk('data/'))[1]
         # print(deck_list)
+
         for idx,deck in enumerate(deck_list):
-            self.deckSelectBox.addItem(deck)
-            self.deckSelectBox.setItemText(idx+1, _translate("MainWindow", str(deck)))
             
-        if len(deck_list) > 0:
-            self.update_deck_select()
+            if(os.path.isfile('data/{}/params.cfg'.format(deck))):           
+                self.deckSelectBox.addItem(deck)
+                self.deckSelectBox.setItemText(idx+1, _translate("MainWindow", str(deck)))
+            
+        if self.deckSelectBox.count() > 0:
+            self.update_deck_load()
             self.deckDescriptionTextEdit.setEnabled(True)
     
     
-    def update_deck_select(self):
-        selected_deck =  self.deckSelectBox.currentText()
-        if not selected_deck == '-':
-            self.sm.saver.de.load_params(selected_deck)
-            self.selected_deck = selected_deck
-            self.valid_deck = True
-            # print(self.sm.saver.de.og_lang)
-            self.originalLanguageLineEdit.setText(self.sm.saver.de.og_lang)
-            self.translationLineEdit.setText(self.sm.saver.de.trans_lang)
-            # print('Valid deck selected')
-            self.deck_select_clicked()
-        else:
-            self.valid_deck = False
-            # print('Invalid deck selected')
+    def update_deck_load(self):
+        
+        if self.deckSelectBox.count() > 0:
             
-        if self.valid_deck:
-            self.originalLanguageLineEdit.setEnabled(True)
-            self.translationLineEdit.setEnabled(True)
-            self.applyDeckChangesButton.setEnabled(True)
-            self.startRecorderButton.setEnabled(True)
-            self.deckDescriptionTextEdit.setEnabled(True)
-            
-            if self.deck_viewer.n_cards > 0:
-                self.en_or_disable_viewer(True)
+            selected_deck =  self.deckSelectBox.currentText()
+            if not selected_deck == '-':
+                self.sm.saver.de.load_params(selected_deck)
+                self.selected_deck = selected_deck
+                self.valid_deck = True
+                # print(self.sm.saver.de.og_lang)
+                self.originalLanguageLineEdit.setText(self.sm.saver.de.og_lang)
+                self.translationLineEdit.setText(self.sm.saver.de.trans_lang)
+                # print('Valid deck selected')
+                self.deck_select_clicked()
             else:
-                self.en_or_disable_viewer(False)
+                self.valid_deck = False
+                # print('Invalid deck selected')
+                
+            if self.valid_deck:
+                self.originalLanguageLineEdit.setEnabled(True)
+                self.translationLineEdit.setEnabled(True)
+                self.applyDeckChangesButton.setEnabled(True)
+                self.startRecorderButton.setEnabled(True)
+                self.deckDescriptionTextEdit.setEnabled(True)
+                
+                if self.deck_viewer.n_cards > 0:
+                    self.en_or_disable_viewer(True)
+                    self.exportCsvButton.setEnabled(True)
+                else:
+                    self.en_or_disable_viewer(False)
+                    self.exportCsvButton.setEnabled(False)
+                
+                
 
 
             
@@ -455,7 +614,7 @@ class Ui_MainWindow(object):
                 index = self.deckSelectBox.findText(deck_name, QtCore.Qt.MatchFixedString)
                 self.deckSelectBox.setItemText(index, _translate("MainWindow", str(deck_name)))
                 self.deckSelectBox.setCurrentIndex(index)
-                self.update_deck_select()
+                self.update_deck_load()
             
         else:
             return
@@ -478,11 +637,12 @@ class Ui_MainWindow(object):
             self.sm_worker = StateMachineWorker(self.sm)
             self.sm_worker.moveToThread(self.qthread)
             self.qthread.started.connect(self.sm_worker.run)
-            self.sm_worker.finished.connect(self.qthread.quit)
+            # self.sm_worker.finished.connect(self.qthread.quit)
             self.sm_worker.finished.connect(self.sm_worker.deleteLater)
-            self.qthread.finished.connect(self.qthread.deleteLater)
-            self.sm_worker.progress.connect(self.reportProgress)
-            self.qthread.start()
+            # self.qthread.finished.connect(self.qthread.deleteLater)
+            # self.sm_worker.progress.connect(self.reportProgress)
+            if not self.thread_started: self.qthread.start()
+            self.thread_started = True
             
             self.startRecorderButton.setEnabled(False)
             self.stopRecorderButton.setEnabled(True)
@@ -532,12 +692,16 @@ class Ui_MainWindow(object):
         # load in decks
         self.en_or_disable_viewer(False)
         self.en_or_disable_recorder(False)
+
         
         self.valid_deck = False
         self.selected_deck = '-'
         self.load_decks(self)
         self.qthread = QThread()
+        self.thread_started = False
         self.load_user_settings()
+        
+        
         return
     
     def init_events(self):
@@ -546,7 +710,7 @@ class Ui_MainWindow(object):
         self.deck_set = DeckSettings('', '', '',False)        
         self.saver = LLNSaver(self.deck_set,self.win_set)
         self.sm = StateMachine(self.saver,self.win_set.mode)  
-        self.deck_exp = DeckExporter(self.sm.saver.de)
+        self.deck_exp = DeckExporter(self.sm.saver.de)        
         
         self.initialize_settings()
         
@@ -573,7 +737,7 @@ class Ui_MainWindow(object):
         # boxes
         self.resolutionBox.currentIndexChanged.connect(self.update_resolution)
         self.recordingModeBox.currentIndexChanged.connect(self.update_recording_mode)
-        self.deckSelectBox.currentIndexChanged.connect(self.update_deck_select)
+        self.deckSelectBox.currentIndexChanged.connect(self.update_deck_load)
         self.subtitleModeBox.currentIndexChanged.connect(self.update_subtitle_mode)
         self.ankiCardStyleBox.currentIndexChanged.connect(self.update_exp_mode)
         
@@ -818,6 +982,7 @@ class Ui_MainWindow(object):
         self.logOutputTextEdit.setGeometry(QtCore.QRect(20, 466, 331, 171))
         self.logOutputTextEdit.setReadOnly(True)
         self.logOutputTextEdit.setObjectName("logOutputTextEdit")
+        self.logOutputTextEdit.setEnabled(False)
         self.tabWidget.addTab(self.exportTab, "")
         self.label_11 = QtWidgets.QLabel(self.centralwidget)
         self.label_11.setGeometry(QtCore.QRect(20, 120, 211, 19))
