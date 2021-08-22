@@ -31,6 +31,8 @@ The program can be started by running the script "LLNAE.py". This will start up 
 
 In this tab, a new deck can be created. This requires a deck name, original language, translation language (optional) and a description (optional). Language and recordings settings are changed here. Furthermore there is a button that calibrates the recorder. After starting the calibration process, you are required to hover over the eight needed positions of the script and press "ctrl-left" to confirm each position. All settings are saved automatically.
 
+![alt text](./app_data/images/calibration.png)
+
 If you have choosen your right settings, you can press "Start Recording" in order to enable recording. The script has three differnt modes:
 
 * manual: This enables saving with a single key press of "ctrl-left"
