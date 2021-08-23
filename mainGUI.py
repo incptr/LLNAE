@@ -26,17 +26,17 @@ import breeze_resources
     # include option to ignore image  
     # append csv disabled for now
     # update .apk sentence card
-    # dark mode https://stackoverflow.com/questions/48256772/dark-theme-for-qt-widgets
     # if new deck created and folder exist already -> fill in missing files
     # update deck count when choosing next card while recorder is running
     # linux port
     # block unblock calibrate/start recording vice versa
-    # convert phrases and subtitle instantly with new thread
     # add light/dark mode to user settings
     # redesign positions etc
     # add looping thread that refreshes deck
     # disable elements when rec started
     # be able to edit subtitle/phrase
+    # include IPA directly
+    # enable hover over like https://ylhyra.is/Ylh%C3%BDra
     
 # class POINT(Structure):
 #        _fields_ = [("x", c_long), ("y", c_long)] 
@@ -1164,12 +1164,13 @@ class Ui_MainWindow(object):
         self.deckPhraseLabel.setWordWrap(True)
         
         self.deckSubLabel = QtWidgets.QLabel(self.viewTab)
-        self.deckSubLabel.setGeometry(QtCore.QRect(40, 265, 301, 50))
+        self.deckSubLabel.setGeometry(QtCore.QRect(40, 250, 301, 50))
         self.deckSubLabel.setText("")
         self.deckSubLabel.setFont(QFont('Roboto', 10))
         self.deckSubLabel.setAlignment(QtCore.Qt.AlignCenter)
         self.deckSubLabel.setWordWrap(True);
         self.deckSubLabel.setObjectName("deckSubLabel")
+        
         # self.deckPhraseLabel.setPixmap(QtGui.QPixmap("data/b.png"))
         # self.deckPhraseLabel.setScaledContents(True)
         self.deckPhraseLabel.setObjectName("deckPhraseLabel")
