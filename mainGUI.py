@@ -15,18 +15,19 @@ from LLNSaver import *
 from state_machine import *
 from deck_viewer import *
 from deck_exporter import*
-import subprocess
+from subprocess import call as open_app
 
 # to-do:
     # if no more cards in view tab -> change text to delete metadata:
     # delete all should be yes no again
-    # recording thread doesnt start again after stopping
     # delete deck doesnt get rid of all folders -> check for dead folders at startup
     # include option to ignore image
     # load profile is useless
     # status bar for recording mode    
     # append csv disabled for now
-    
+    # update .apk sentence card
+    # dark mode
+    # if new deck created and folder exist already -> fill in missing files
     
 # class POINT(Structure):
 #        _fields_ = [("x", c_long), ("y", c_long)] 
@@ -87,6 +88,94 @@ class CalibrationThread(QThread):
         
         
         
+
+class RecordThread(QThread):
+    
+    change_value = pyqtSignal(int)
+    output_log = pyqtSignal(str)
+        
+    def __init__(self,LLNSaver,mode):
+        super(RecordThread,self).__init__()
+        self.saver = LLNSaver
+        self.mode = mode
+        self.shutdown_req = False
+        self.listener = []
+        self.running_idx = 0
+        
+    def mode_loop(self):
+        # manual mode
+        
+        # self.change_value.emit(1)
+        # self.output_log.emit('test')
+  
+        if self.mode == 'manual':
+            
+            def on_release(key):
+                if key == Key.esc:
+                    # Stop listener
+                    print('-- Shutting down. {} phrase(s) saved.'.format(self.saver.de.ri-self.saver.de.si))
+                    return False
+            
+            def on_press(key):
+                if self.shutdown_req:
+                    return False
+                
+                
+                if key == Key.ctrl_l:
+                    self.saver.save_sentence(self.saver.de.testing,0.0)
+                    self.running_idx = self.running_idx +1
+                    self.change_value.emit(self.running_idx)
+                    # print("++ Phrase saved")                    
+                    return         
+            # while not self.shutdown_req:
+  
+            with Listener(  
+                    on_press=on_press,
+                    on_release=on_release) as self.listener:
+                
+                if self.shutdown_req == False:                        
+                    self.listener.join()
+                else:
+                    return
+                print('SM shutdown')
+                return
+                    
+
+        # follow along
+        elif self.mode == 'follow along':
+            print('-- follow along started')
+            while not self.shutdown_req:
+                self.saver.check_if_phrase_started('NAP')
+                # print("++ Phrase started.")
+                self.saver.save_sentence(self.saver.de.testing,0.0)
+                print("++ Phrase saved.")
+                self.running_idx = self.running_idx +1
+                self.change_value.emit(self.running_idx)
+                
+                time.sleep(0.1)
+                self.saver.check_if_phrase_ended()
+                time.sleep(0.1)
+                # print("++ Phrase ended.")
+
+                    
+        # fast forward
+        elif self.mode == 'fast forward':
+            while not self.shutdown_req:
+                im = pyautogui.screenshot()
+                if self.saver.check_if_running(im):
+                    self.saver.check_if_phrase_started()
+                    self.saver.save_sentence(self.saver.de.testing,self.saver.wp.ff_delay)
+                    print("++ Phrase saved.")
+                    self.running_idx = self.running_idx +1
+                    self.change_value.emit(self.running_idx)
+                    pyautogui.press('right')
+        
+
+    
+    def run(self):
+
+        self.mode_loop()
+
     
 
 class ExportThread(QThread):
@@ -114,7 +203,6 @@ class ExportThread(QThread):
             prog_idx = 0
             for ind in range(self.deck_exp.start_idx,self.deck_exp.running_idx+1):
 
-                
                 if not os.path.isfile(self.deck_exp.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_exp.deck_set.deck,ind)):
                     continue
                 [sentence,translation,ipa,empty,favorite] = self.deck_exp.get_export_values(ind)
@@ -150,20 +238,6 @@ class NewDeckPopup(QWidget):
         if txt == '':
             txt = ' '
         return [txt,ok]
-        
-
-class StateMachineWorker(QObject):
-    
-    finished = pyqtSignal()
-    progress = pyqtSignal(int)
-    def __init__(self,state_machine):
-        super(StateMachineWorker, self).__init__()
-        self.sm = state_machine        
-
-    def run(self):
-
-        self.sm.mode_loop()
-
 
 
 class Ui_MainWindow(object):
@@ -286,16 +360,11 @@ class Ui_MainWindow(object):
     
     def import_clicked(self):
         if(os.path.isfile(self.deck_exp.deck_set.path+'/{}.csv'.format(self.deck_exp.deck_set.deck))): 
-            subprocess.call(['C:\\Program Files\\Anki\\anki.exe', self.deck_set.path + '{}.csv'.format(self.deck_set.deck)])
+            open_app(['C:\\Program Files\\Anki\\anki.exe', self.deck_set.path + '{}.csv'.format(self.deck_set.deck)])
     
     def append_output_log(self,text):
         self.logOutputTextEdit.insertPlainText(text)
     
-    def startProgressBar(self):
-        
-        self.exp_thread.change_value.connect(self.setProgressVal)
-        self.exp_thread.output_log.connect(self.append_output_log)
-        self.exp_thread.start()
     
     def setProgressVal(self, val):
         # print('{} received'.format(val))
@@ -317,8 +386,10 @@ class Ui_MainWindow(object):
         self.exportProgressBar.setEnabled(True)
         self.label_5.setEnabled(True)
         self.logOutputTextEdit.setEnabled(True)
-        self.startProgressBar()
-        
+        self.exp_thread.change_value.connect(self.setProgressVal)
+        self.exp_thread.output_log.connect(self.append_output_log)
+        self.exp_thread.start()
+
         
         
         return
@@ -363,7 +434,7 @@ class Ui_MainWindow(object):
 
     
     #----------------- VIEWER --------------------------
-    
+        
     def reset_deck_clicked(self):
         
         qm = QMessageBox()
@@ -561,9 +632,69 @@ class Ui_MainWindow(object):
         self.nextImageButton.setEnabled(val)
         
             
-    #----------------- RECORDER --------------------------
+    #----------------- RECORDER --------------------------    
+    
+    def minimal_mode_init(self):
+        
+        if not self.minimal_init:
+            
+            _translate = QtCore.QCoreApplication.translate
+            
+            self.mStartRecButton =QtWidgets.QPushButton(self.centralwidget)            
+            self.mStartRecButton.setText(_translate("MainWindow", "Start Recorder"))
+            self.mStartRecButton.move(10,5)            
+            self.mStartRecButton.resize(110,34)
+            
+            self.mStopRecButton = QtWidgets.QPushButton(self.centralwidget)
+            self.mStopRecButton.setText(_translate("MainWindow", "Stop Recorder"))
+            self.mStopRecButton.move(120,5)
+            self.mStopRecButton.resize(110,34)
+            
+            self.mCalibrateButton = QtWidgets.QPushButton(self.centralwidget)
+            self.mCalibrateButton.setText(_translate("MainWindow", "Calibrate"))
+            self.mCalibrateButton.move(10,39)
+            self.mCalibrateButton.resize(110,34)
+            
+            self.mModeButton = QtWidgets.QPushButton(self.centralwidget)
+            self.mModeButton.setText(_translate("MainWindow", "Standard mode"))
+            self.mModeButton.move(120,39)
+            self.mModeButton.resize(110,34)
+            
+            self.mCalibrateButton.clicked.connect(self.calibrate_clicked)
+            self.mStartRecButton.clicked.connect(self.start_recording_clicked)
+            self.mStopRecButton.clicked.connect(self.stop_recording_clicked)
+            self.mModeButton.clicked.connect(self.minimal_mode_clicked) 
+            
+    def minimal_mode_clicked(self):
+        
+        if self.window_mode == 'full':
+            
+            self.window_mode = 'minimal'
+            self.minimal_mode_init()
+            
+            self.mStartRecButton.setVisible(True)
+            self.mStopRecButton.setVisible(True)
+            self.mCalibrateButton.setVisible(True)
+            self.mModeButton.setVisible(True)
+            
+            self.label_12.setText('')   
+            self.mw.resize(240,93)
+            
+        else:
+            
+            self.mStartRecButton.setVisible(False)
+            self.mStopRecButton.setVisible(False)
+            self.mCalibrateButton.setVisible(False)
+            self.mModeButton.setVisible(False)
+            
+            self.label_12.setText('LLN Anki Exporter v0.1') 
+            
+            self.mw.resize(430,923)
+            self.window_mode = 'full'
+                           
     
     def update_tabs(self):
+        self.statusbar.showMessage('')
         tab = self.tabWidget.currentIndex()
         if tab == 0:
             self.update_deck_load()
@@ -586,6 +717,9 @@ class Ui_MainWindow(object):
     def load_decks(self,MainWindow):
         
         _translate = QtCore.QCoreApplication.translate
+        if not os.path.exists('data'):
+            os.mkdir('data')
+            return
         deck_list = next(os.walk('data/'))[1]
         # print(deck_list)
 
@@ -739,28 +873,28 @@ class Ui_MainWindow(object):
 
 
     def stop_recording_clicked(self):
-        self.sm_worker.sm.shutdown_req = True
-        if not isinstance(self.sm_worker.sm.listener, list):
-            self.sm_worker.sm.listener.stop()        
+        
+        self.rec_thread.shutdown_req = True      
         
         self.startRecorderButton.setEnabled(True)
         self.stopRecorderButton.setEnabled(False)
+        self.statusbar.showMessage('Recorder stopped.')
+        
+    def return_record_progress(self,indx):
+        
+        self.statusbar.showMessage('Recorder running in {} mode. {} phrase(s) saved since launch'.format(self.sm.mode,indx))
+        # print()
 
         
     def start_recording_clicked(self):
         if self.valid_deck:
-            print('Attempting to start recording in {} mode'.format(self.sm.mode))
-            # create record thread
-            self.sm.shutdown_req = False
-            self.sm_worker = StateMachineWorker(self.sm)
-            self.sm_worker.moveToThread(self.qthread)
-            self.qthread.started.connect(self.sm_worker.run)
-            # self.sm_worker.finished.connect(self.qthread.quit)
-            self.sm_worker.finished.connect(self.sm_worker.deleteLater)
-            # self.qthread.finished.connect(self.qthread.deleteLater)
-            # self.sm_worker.progress.connect(self.reportProgress)
-            if not self.exp_thread_started: self.qthread.start()
-            self.exp_thread_started = True
+            
+            self.rec_thread = RecordThread(self.sm.saver,self.sm.mode)
+            self.rec_thread.change_value.connect(self.return_record_progress)
+            # self.rec_thread.output_log.connect(self.append_output_log)
+            self.rec_thread.start()            
+            
+            self.statusbar.showMessage('Recorder running in {} mode.'.format(self.sm.mode))
             
             self.startRecorderButton.setEnabled(False)
             self.stopRecorderButton.setEnabled(True)
@@ -811,18 +945,19 @@ class Ui_MainWindow(object):
         self.en_or_disable_viewer(False)
         self.en_or_disable_recorder(False)
 
-        
+        self.minimal_init = False
+        self.window_mode = 'full'
         self.valid_deck = False
         self.selected_deck = '-'
         self.load_decks(self)
         self.qthread = QThread()
         self.exp_thread_started = False
-        self.load_user_settings()
-        
+        self.load_user_settings()    
         
         return
     
     def init_events(self):
+        
         # create instances
         self.win_set = WindowSettings('full','1080',0)
         self.deck_set = DeckSettings('', '', '',False)        
@@ -850,7 +985,8 @@ class Ui_MainWindow(object):
         self.applyDeckChangesButton.clicked.connect(self.apply_deck_clicked)
         self.newDeckButton.clicked.connect(self.new_deck_clicked)
         self.exportCsvButton.clicked.connect(self.export_clicked)  
-        self.importIntoAnkiButton.clicked.connect(self.import_clicked)  
+        self.importIntoAnkiButton.clicked.connect(self.import_clicked) 
+        self.minimalModeButton.clicked.connect(self.minimal_mode_clicked) 
         
         # boxes
         self.resolutionBox.currentIndexChanged.connect(self.update_resolution)
@@ -876,6 +1012,9 @@ class Ui_MainWindow(object):
         
     
     def setupUi(self, MainWindow):
+        
+        self.mw =  MainWindow
+        
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(430, 923)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -923,8 +1062,8 @@ class Ui_MainWindow(object):
         self.splitter.setGeometry(QtCore.QRect(20, 180, 301, 34))
         self.splitter.setOrientation(QtCore.Qt.Horizontal)
         self.splitter.setObjectName("splitter")
-        self.trySettingsButton = QtWidgets.QPushButton(self.splitter)
-        self.trySettingsButton.setObjectName("trySettingsButton")
+        self.minimalModeButton = QtWidgets.QPushButton(self.splitter)
+        self.minimalModeButton.setObjectName("minimalModeButton")
         self.calibrateButton = QtWidgets.QPushButton(self.splitter)
         self.calibrateButton.setObjectName("calibrateButton")
         self.groupBox_2 = QtWidgets.QGroupBox(self.frame)
@@ -980,7 +1119,7 @@ class Ui_MainWindow(object):
         self.startRecorderButton = QtWidgets.QPushButton(self.splitter_8)
         self.startRecorderButton.setObjectName("startRecorderButton")
         self.stopRecorderButton = QtWidgets.QPushButton(self.splitter_8)
-        self.stopRecorderButton.setObjectName("stopRecorderButton")
+        self.stopRecorderButton.setObjectName("stopRecorderButton")        
         self.tabWidget.addTab(self.recordTab, "")
         self.viewTab = QtWidgets.QWidget()
         self.viewTab.setObjectName("viewTab")
@@ -1152,7 +1291,7 @@ class Ui_MainWindow(object):
         self.label_8.setText(_translate("MainWindow", "Cursor/AP positions"))
         self.label_16.setText(_translate("MainWindow", "Video start/end"))
         self.label_21.setText(_translate("MainWindow", "Subtitle start/end"))
-        self.trySettingsButton.setText(_translate("MainWindow", "Load Profile"))
+        self.minimalModeButton.setText(_translate("MainWindow", "Minimal mode"))
         self.calibrateButton.setText(_translate("MainWindow", "Calibrate"))
         self.groupBox_2.setTitle(_translate("MainWindow", "Recording"))
         self.resolutionBox.setItemText(0, _translate("MainWindow", "1080"))

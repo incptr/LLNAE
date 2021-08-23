@@ -18,8 +18,8 @@ Created on Wed Aug 18 00:28:58 2021
 import pytesseract
 import pandas as pd
 import numpy as np
-import progressbar, time, os
-import shutil, os, progressbar
+import time, os
+import shutil, os
 from settings import *
 import csv,glob
 from mainGUI import NewDeckPopup
