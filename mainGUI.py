@@ -9,6 +9,7 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMessageBox, QWidget,QPushButton,QLineEdit, QInputDialog, QApplication, QFormLayout
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from PyQt5.QtGui import QFont
 from settings import WindowSettings,DeckSettings
 from calibrate_screen import *
 from LLNSaver import *
@@ -16,22 +17,31 @@ from state_machine import *
 from deck_viewer import *
 from deck_exporter import*
 from subprocess import call as open_app
+import breeze_resources
 
 # to-do:
     # if no more cards in view tab -> change text to delete metadata:
     # delete all should be yes no again
     # delete deck doesnt get rid of all folders -> check for dead folders at startup
-    # include option to ignore image
-    # load profile is useless
-    # status bar for recording mode    
+    # include option to ignore image  
     # append csv disabled for now
     # update .apk sentence card
-    # dark mode
+    # dark mode https://stackoverflow.com/questions/48256772/dark-theme-for-qt-widgets
     # if new deck created and folder exist already -> fill in missing files
+    # update deck count when choosing next card while recorder is running
+    # linux port
+    # block unblock calibrate/start recording vice versa
+    # convert phrases and subtitle instantly with new thread
+    # add light/dark mode to user settings
+    # redesign positions etc
+    # add looping thread that refreshes deck
+    # disable elements when rec started
+    # be able to edit subtitle/phrase
     
 # class POINT(Structure):
 #        _fields_ = [("x", c_long), ("y", c_long)] 
-       
+
+
 class CalibrationThread(QThread):
     
     cal_index = pyqtSignal(int)
@@ -53,7 +63,7 @@ class CalibrationThread(QThread):
             global xy
             if key == Key.ctrl_l:
                 xy = queryMousePosition()
-                print(xy)
+                # print(xy)
                 return False     
         
             
@@ -125,6 +135,7 @@ class RecordThread(QThread):
                     self.saver.save_sentence(self.saver.de.testing,0.0)
                     self.running_idx = self.running_idx +1
                     self.change_value.emit(self.running_idx)
+                    time.sleep(0.2)
                     # print("++ Phrase saved")                    
                     return         
             # while not self.shutdown_req:
@@ -299,51 +310,21 @@ class Ui_MainWindow(object):
     
     def calibrate_progress(self,val):
         
-        print('Calibrating #{}'.format(val))
-        # if val == 0:
-        #     self.msg = QMessageBox()
-        #     self.msg.setWindowTitle("Calibration")
-        #     self.msg.setText("Hover over the bottom right corner of the video and press ctrl-left")
-        #     x = self.msg.exec_()
-        # if val == 1:
-        #     self.msg = QMessageBox()
-        #     self.msg.setWindowTitle("Calibration")
-        #     self.msg.setText("Hover over the upper left corner of the original subtitles and press ctrl-left")
-        #     x = self.msg.exec_()
-        # if val == 2:
-        #     self.msg = QMessageBox()
-        #     self.msg.setWindowTitle("Calibration")
-        #     self.msg.setText("Hover over the bottom right corner of the original subtitles and press ctrl-left")
-        #     x = self.msg.exec_()
-        # if val == 3:
-        #     self.msg = QMessageBox()
-        #     self.msg.setWindowTitle("Calibration")
-        #     self.msg.setText("Hover over the upper left corner of the translated subtitles and press ctrl-left")
-        #     x = self.msg.exec_()
-        # if val == 4:
-        #     self.msg = QMessageBox()
-        #     self.msg.setWindowTitle("Calibration")
-        #     self.msg.setText("Hover over the bottom right corner of the translated subtitles and press ctrl-left")
-        #     x = self.msg.exec_()
-        # if val == 6:
-        #     self.msg = QMessageBox()
-        #     self.msg.setWindowTitle("Calibration")
-        #     self.msg.setText("Hover over the grey cursors at the bottom of the plugin and press ctrl-left")
-        #     x = self.msg.exec_()
-        # if val == 7:
-        #     self.msg = QMessageBox()
-        #     self.msg.setWindowTitle("Calibration")
-        #     self.msg.setText("Hover over the auto-play button at bottom right side of the plugin press ctrl-left")
-        #     x = self.msg.exec_()
+        self.statusbar.showMessage('Calibrating point #{}.'.format(val))
+        
         if val == 8:
-            print('updating user cfg')
+            # print('updating user cfg')
             self.tabWidget.setEnabled(True)
             self.sm.saver.wp.load_config()
             self.update_user_cfg(True) 
+            self.statusbar.showMessage('')
             
 
     
     def calibrate_clicked(self):
+        
+        self.statusbar.showMessage('Calibrating point #{}.'.format(1))
+        
         self.cal_thread = CalibrationThread()
         self.cal_thread.cal_index.connect(self.calibrate_progress)
         self.cal_thread.start()
@@ -480,8 +461,8 @@ class Ui_MainWindow(object):
             # print('++ Index reset to 0. All images deleted')
             
             self.deckPhoto.setPixmap(QtGui.QPixmap('app_data/images/blank.png'))
-            self.deckPhraseLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
-            self.deckSubLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
+            self.deckPhraseLabel.setPixmap(QtGui.QPixmap('app_data/images/dark.png'))
+            self.deckSubLabel.setPixmap(QtGui.QPixmap('app_data/images/dark.png'))
             self.label_7.setText('Card #{} of {}'.format(0,0))
 
             self.en_or_disable_viewer(False)
@@ -508,8 +489,8 @@ class Ui_MainWindow(object):
             # print('++ Index reset to 0. All images deleted')
             
             self.deckPhoto.setPixmap(QtGui.QPixmap('app_data/images/blank.png'))
-            self.deckPhraseLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
-            self.deckSubLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
+            self.deckPhraseLabel.setText('')
+            self.deckSubLabel.setText('')
             self.label_7.setText('Card #{} of {}'.format(0,0))
 
             self.reinitialize_deck_fields()
@@ -524,10 +505,14 @@ class Ui_MainWindow(object):
             os.remove(self.deck_viewer.sub_path)
             self.deck_viewer.n_cards = self.deck_viewer.n_cards -1
             [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=1,deletion = 1)  
+            
             if not im_path == '':
+                
+                phrase,trans = get_phrase_and_trans(self)
+                
                 self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
-                self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
-                self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+                self.deckPhraseLabel.setText(phrase)
+                self.deckSubLabel.setText(trans)
                 
                 fav_val = self.deck_viewer.check_favorite()
                 if fav_val:
@@ -546,8 +531,8 @@ class Ui_MainWindow(object):
                 
             else:
                 self.deckPhoto.setPixmap(QtGui.QPixmap('app_data/images/blank.png'))
-                self.deckPhraseLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
-                self.deckSubLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
+                self.deckPhraseLabel.setText('')
+                self.deckSubLabel.setText('')
                 self.label_7.setText('Card #{} of {}'.format(0,0))
                 self.en_or_disable_viewer(False)
                 self.resetDeckButton.setEnabled(True)
@@ -562,9 +547,12 @@ class Ui_MainWindow(object):
             [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=1)
             
             if not im_path == '':
+                
+                phrase,trans = self.get_phrase_and_trans()
+                
                 self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
-                self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))            
-                if self.showTranslationCheck.isChecked(): self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+                self.deckPhraseLabel.setText(phrase)
+                self.deckSubLabel.setText(trans)
                 
                 self.label_7.setText('Card #{} of {}'.format(self.deck_viewer.card_number,self.deck_viewer.n_cards))
                 
@@ -583,9 +571,14 @@ class Ui_MainWindow(object):
             [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=-1)
             
             if not im_path == '':
+                
+                phrase,trans = self.get_phrase_and_trans()
+
                 self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
-                self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
-                if self.showTranslationCheck.isChecked(): self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+                self.deckPhraseLabel.setText(phrase)
+                self.deckSubLabel.setText(trans)                
+                
+                if self.showTranslationCheck.isChecked(): self.deckSubLabel.setText(trans) 
                 
                 self.label_7.setText('Card #{} of {}'.format(self.deck_viewer.card_number,self.deck_viewer.n_cards))
             
@@ -656,7 +649,7 @@ class Ui_MainWindow(object):
             self.mCalibrateButton.resize(110,34)
             
             self.mModeButton = QtWidgets.QPushButton(self.centralwidget)
-            self.mModeButton.setText(_translate("MainWindow", "Standard mode"))
+            self.mModeButton.setText(_translate("MainWindow", "Expand"))
             self.mModeButton.move(120,39)
             self.mModeButton.resize(110,34)
             
@@ -808,6 +801,26 @@ class Ui_MainWindow(object):
         self.sm.saver.de.save_params()
 
 
+    def get_phrase_and_trans(self):
+        with open(self.deck_set.path+'phrases.txt') as f:
+            lines = f.readlines()
+            
+        for line in lines:            
+            vals = line.split(' ')
+            indx = int(vals[0])
+            if indx == self.deck_viewer.idx:                
+                phrase = ' '.join(vals[1:])
+                
+        with open(self.deck_set.path+'trans.txt') as f:
+            lines = f.readlines()
+            
+        for line in lines:            
+            vals = line.split(' ')
+            indx = int(vals[0])
+            if indx == self.deck_viewer.idx:                
+                trans = ' '.join(vals[1:])
+                
+        return phrase,trans
         
     def deck_select_clicked(self):
         # create DeckViewer instance
@@ -818,9 +831,15 @@ class Ui_MainWindow(object):
         [im_path,ph_path,sub_path,idx] = self.deck_viewer.load_picture(mode='init')
         
         if not im_path == '':
+            
+            phrase,trans = self.get_phrase_and_trans()
+
             self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
-            self.deckPhraseLabel.setPixmap(QtGui.QPixmap(ph_path))
-            self.deckSubLabel.setPixmap(QtGui.QPixmap(sub_path))
+            self.deckPhraseLabel.setText(phrase)
+            self.deckSubLabel.setText(trans)    
+            
+            
+            
             
         list_of_files = filter( os.path.isfile,
                       glob.glob(self.deck_viewer.deck_set.path + 'images/' + '*') )
@@ -830,8 +849,8 @@ class Ui_MainWindow(object):
         
         if self.deck_viewer.n_cards == 0:
             self.deckPhoto.setPixmap(QtGui.QPixmap('app_data/images/blank.png'))
-            self.deckPhraseLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
-            self.deckSubLabel.setPixmap(QtGui.QPixmap('app_data/images/white.png'))
+            self.deckPhraseLabel.setText('')
+            self.deckSubLabel.setText('')
             self.label_7.setText('Card #{} of {}'.format(0,0))
             self.en_or_disable_viewer(False)
         else:
@@ -1127,23 +1146,32 @@ class Ui_MainWindow(object):
         self.label_7.setGeometry(QtCore.QRect(140, 370, 111, 20))
         self.label_7.setAlignment(QtCore.Qt.AlignCenter)
         self.label_7.setObjectName("label_7")
-        self.deckSubLabel = QtWidgets.QLabel(self.viewTab)
-        self.deckSubLabel.setGeometry(QtCore.QRect(30, 260, 331, 31))
-        self.deckSubLabel.setText("")
-        self.deckSubLabel.setPixmap(QtGui.QPixmap("data/c.png"))
-        self.deckSubLabel.setScaledContents(True)
-        self.deckSubLabel.setObjectName("deckSubLabel")
+        # self.deckSubLabel.setPixmap(QtGui.QPixmap("data/c.png"))
+        # self.deckSubLabel.setScaledContents(True)
+        
         self.deckPhoto = QtWidgets.QLabel(self.viewTab)
-        self.deckPhoto.setGeometry(QtCore.QRect(20, 40, 351, 171))
+        self.deckPhoto.setGeometry(QtCore.QRect(20, 25, 341, 171))
         self.deckPhoto.setText("")
         self.deckPhoto.setPixmap(QtGui.QPixmap("data/a.png"))
         self.deckPhoto.setScaledContents(True)
         self.deckPhoto.setObjectName("deckPhoto")
+        
         self.deckPhraseLabel = QtWidgets.QLabel(self.viewTab)
-        self.deckPhraseLabel.setGeometry(QtCore.QRect(30, 220, 331, 31))
+        self.deckPhraseLabel.setGeometry(QtCore.QRect(40, 210, 301, 55))
         self.deckPhraseLabel.setText("")
-        self.deckPhraseLabel.setPixmap(QtGui.QPixmap("data/b.png"))
-        self.deckPhraseLabel.setScaledContents(True)
+        self.deckPhraseLabel.setFont(QFont('Roboto', 13))
+        self.deckPhraseLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self.deckPhraseLabel.setWordWrap(True)
+        
+        self.deckSubLabel = QtWidgets.QLabel(self.viewTab)
+        self.deckSubLabel.setGeometry(QtCore.QRect(40, 265, 301, 50))
+        self.deckSubLabel.setText("")
+        self.deckSubLabel.setFont(QFont('Roboto', 10))
+        self.deckSubLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self.deckSubLabel.setWordWrap(True);
+        self.deckSubLabel.setObjectName("deckSubLabel")
+        # self.deckPhraseLabel.setPixmap(QtGui.QPixmap("data/b.png"))
+        # self.deckPhraseLabel.setScaledContents(True)
         self.deckPhraseLabel.setObjectName("deckPhraseLabel")
         self.groupBox_4 = QtWidgets.QGroupBox(self.viewTab)
         self.groupBox_4.setEnabled(True)
@@ -1356,7 +1384,23 @@ class Ui_MainWindow(object):
 
 if __name__ == "__main__":
     import sys
+    
+    style = """
+        QWidget{
+              background: #262D37}
+    
+    
+    """
+    from PyQt5.QtCore import QFile, QTextStream
+    
     app = QtWidgets.QApplication(sys.argv)
+    
+    file = QFile(":/dark/stylesheet.qss")
+    file.open(QFile.ReadOnly | QFile.Text)
+    stream = QTextStream(file)
+    app.setStyleSheet(stream.readAll())
+    
+    # app.setStyleSheet(style)
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
     ui.setupUi(MainWindow)

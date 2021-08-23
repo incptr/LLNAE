@@ -63,8 +63,10 @@ class DeckViewer():
             if len(list_of_files) > 0:
                 start_idx = list_of_files[0]       
                 start_idx = int(start_idx[19+2*len(self.deck_set.deck):-4])
-
+                
         
+   
+
         self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
         self.ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,start_idx)
         self.sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,start_idx)

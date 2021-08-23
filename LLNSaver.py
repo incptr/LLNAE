@@ -9,7 +9,56 @@ from PIL import Image
 import PIL.ImageOps
 from pynput.keyboard import Key, Listener
 import numpy as np
-import time,shutil
+import time,shutil, pytesseract
+from PyQt5.QtCore import QThread
+
+class OCRThread(QThread):
+    
+    # cal_index = pyqtSignal(int)
+ 
+     def __init__(self,img,lang,path,idx,folder):
+         super(OCRThread,self).__init__()
+         self.type = folder
+         self.img = img
+         self.lang = lang
+         self.path = path
+         self.idx = idx
+         
+         pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe' 
+         
+     def convert_to_text(self): 
+         # print('convert_to_text')
+         print(self.lang)
+         # self.img.show()
+         
+         input_string = pytesseract.image_to_string(self.img,lang=self.lang)         
+         words = input_string.split()   
+         self.text = ' '.join(words)         
+         self.save_text()
+         
+         # print(word_list)
+         
+     def save_text(self):
+         
+        def cut_out(start,end):        
+            start = self.text.find(start)
+            end = self.text.find(end)
+            if start != -1 and end != -1:
+              self.text = self.text[start+1:end]
+                  
+        cut_out('(',')')
+        cut_out('{','}')
+        cut_out('[',']')
+
+        with open('{}{}.txt'.format(self.path,self.type),'a') as f:
+            f.write('{} {} \n'.format(self.idx,self.text))
+        
+         
+     
+     def run(self):
+         self.convert_to_text()
+           
+
 
 class LLNSaver():
     def __init__(self,de,wp):
@@ -109,6 +158,8 @@ class LLNSaver():
         im1 = im1.resize(newsize)
         im1.save(self.de.path + 'images/LLNi-{}-{}.png'.format(self.de.deck,self.de.ri))
         
+        
+        
         # Phrase 
         left = self.wp.phrase_ul[0]
         top = self.wp.phrase_ul[1]
@@ -122,6 +173,9 @@ class LLNSaver():
         im2 = PIL.ImageOps.invert(im2)
         im2.save(self.de.path + 'phrases/LLNp-{}-{}.png'.format(self.de.deck,self.de.ri))
         
+        self.ph_thread = OCRThread(im2,self.de.og_lang,self.de.path,self.de.ri,'phrases')
+        self.ph_thread.start() 
+        
         if self.wp.use_trans == 'ignore translation':
             shutil.copy('app_data/images/white.png', self.de.path + 'trans/LLNt-{}-{}.png'.format(self.de.deck,self.de.ri))
         else:     
@@ -133,11 +187,16 @@ class LLNSaver():
             im3 = im.crop((left, top, right, bottom))
             ratio = (right-left)/(bottom-top)
             
+            im3 = PIL.ImageOps.invert(im3)
+            
+            self.tr_thread = OCRThread(im3,self.de.trans_lang,self.de.path,self.de.ri,'trans')
+            self.tr_thread.start() 
+            
             # newsize = (500, int(500/ratio))
             # im3 = im3.resize(newsize)
         
    
-            im3 = PIL.ImageOps.invert(im3)
+            
             im3.save(self.de.path + 'trans/LLNt-{}-{}.png'.format(self.de.deck,self.de.ri))
         
     def save_sentence(self,testing,delay):

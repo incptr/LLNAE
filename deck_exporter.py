@@ -223,9 +223,26 @@ class DeckExporter():
         
         favorite = self.check_favorite(index)
         ipa_tr = ''
-        pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'    
-        img1 = Image.open(self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,index))
-        word_list = pytesseract.image_to_string(img1,lang=self.deck_set.og_lang)
+        
+        with open(self.deck_set.path+'phrases.txt') as f:
+            lines = f.readlines()
+            
+        for line in lines:            
+            vals = line.split(' ')
+            indx = int(vals[0])
+            if indx == index:                
+                phrase = ' '.join(vals[1:])
+                
+        with open(self.deck_set.path+'trans.txt') as f:
+            lines = f.readlines()
+            
+        for line in lines:            
+            vals = line.split(' ')
+            indx = int(vals[0])
+            if indx == index:                
+                trans = ' '.join(vals[1:])
+                
+        word_list = phrase
         word_list_original = word_list
         blacklist=[',','|','"','-','?','.','«','!','--']
         
@@ -236,7 +253,7 @@ class DeckExporter():
         word_list = ' '.join(words)
         
         img2 = Image.open(self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,index))
-        translation = pytesseract.image_to_string(img2,lang=self.deck_set.trans_lang)
+        translation = trans
         
         for b in blacklist:
             translation = translation.replace(b,'')
