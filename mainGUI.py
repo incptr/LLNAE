@@ -19,7 +19,7 @@ from deck_exporter import*
 from subprocess import call as open_app
 import breeze_resources
 
-# to-do:
+# to-do/ ideas:
     # if no more cards in view tab -> change text to delete metadata:
     # delete all should be yes no again
     # delete deck doesnt get rid of all folders -> check for dead folders at startup
@@ -37,9 +37,10 @@ import breeze_resources
     # be able to edit subtitle/phrase
     # include IPA directly
     # enable hover over like https://ylhyra.is/Ylh%C3%BDra
+    # card idx gets reset when changing tabs
+    # fastforward in deck (-/+10) ?
+    # get rid of old data structure
     
-# class POINT(Structure):
-#        _fields_ = [("x", c_long), ("y", c_long)] 
 
 
 class CalibrationThread(QThread):
@@ -508,7 +509,7 @@ class Ui_MainWindow(object):
             
             if not im_path == '':
                 
-                phrase,trans = get_phrase_and_trans(self)
+                phrase,trans = self.get_phrase_and_trans()
                 
                 self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
                 self.deckPhraseLabel.setText(phrase)
@@ -1143,7 +1144,7 @@ class Ui_MainWindow(object):
         self.viewTab = QtWidgets.QWidget()
         self.viewTab.setObjectName("viewTab")
         self.label_7 = QtWidgets.QLabel(self.viewTab)
-        self.label_7.setGeometry(QtCore.QRect(140, 370, 111, 20))
+        self.label_7.setGeometry(QtCore.QRect(136, 370, 111, 20))
         self.label_7.setAlignment(QtCore.Qt.AlignCenter)
         self.label_7.setObjectName("label_7")
         # self.deckSubLabel.setPixmap(QtGui.QPixmap("data/c.png"))
@@ -1190,7 +1191,7 @@ class Ui_MainWindow(object):
         self.label.setObjectName("label")
         self.label_2 = QtWidgets.QLabel(self.viewTab)
         self.label_2.setEnabled(True)
-        self.label_2.setGeometry(QtCore.QRect(20, 40, 0, 25))
+        self.label_2.setGeometry(QtCore.QRect(20, 22, 0, 25))
         self.label_2.setAutoFillBackground(False)
         self.label_2.setText("")
         self.label_2.setPixmap(QtGui.QPixmap("app_data/images/star.png"))
@@ -1259,7 +1260,7 @@ class Ui_MainWindow(object):
         self.label_5.setObjectName("label_5")
         self.exportProgressBar = QtWidgets.QProgressBar(self.exportTab)
         self.exportProgressBar.setEnabled(False)
-        self.exportProgressBar.setGeometry(QtCore.QRect(20, 430, 331, 23))
+        self.exportProgressBar.setGeometry(QtCore.QRect(10, 430, 369, 23))
         self.exportProgressBar.setProperty("value", 0)
         self.exportProgressBar.setTextVisible(False)
         self.exportProgressBar.setInvertedAppearance(False)
