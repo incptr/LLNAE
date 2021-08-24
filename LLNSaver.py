@@ -11,7 +11,9 @@ from pynput.keyboard import Key, Listener
 import numpy as np
 import time,shutil, pytesseract
 from PyQt5.QtCore import QThread
+from threads import *
 
+         
 class OCRThread(QThread):
     
     # cal_index = pyqtSignal(int)
@@ -28,7 +30,7 @@ class OCRThread(QThread):
          
      def convert_to_text(self): 
          # print('convert_to_text')
-         print(self.lang)
+         # print(self.lang)
          # self.img.show()
          
          input_string = pytesseract.image_to_string(self.img,lang=self.lang)         
@@ -51,8 +53,7 @@ class OCRThread(QThread):
         cut_out('[',']')
 
         with open('{}{}.txt'.format(self.path,self.type),'a') as f:
-            f.write('{} {} \n'.format(self.idx,self.text))
-        
+            f.write('{} {} \n'.format(self.idx,self.text))      
          
      
      def run(self):
@@ -65,6 +66,57 @@ class LLNSaver():
         self.de = de
         self.wp = wp
         
+    def anticipate_audio(self):
+        # timeout
+        countdown = 15
+        clip_length = 0
+        
+        while countdown:
+            
+            im = pyautogui.screenshot()
+            countdown = countdown-1
+            left = self.wp.cursor_pos[0] + 50
+            top = self.wp.cursor_pos[1]
+            right =left + 10
+            bottom = top+1
+            im1 = im.crop((left, top, right, bottom))
+            pixels = [i for i in im1.getdata()]
+
+            #check if tuple of pixel value exists in array-pixel
+            phrase_approaching = (36, 36, 36) in pixels
+            gap_approaching = (19, 19, 19) in pixels
+            # print(phrase_started) #True if exists, False if it doesn't
+            if phrase_approaching and gap_approaching:
+                
+                phrase_indx = pixels.index((36,36,36))
+                gap_indx = pixels.index((19,19,19))
+                
+                if phrase_indx > gap_indx:
+                
+                    clip_length = self.get_length(im)
+                    # print('phrase approaching - length: {} px,{} sec'.format(clip_length*50,clip_length))
+                    # im1.save('test.png')
+                    return clip_length
+            
+    def get_length(self,im):
+        
+        ratio = 50
+        
+        clip_length = 0
+        left = self.wp.cursor_pos[0] + 60
+        top = self.wp.cursor_pos[1]
+        right = left+ 500
+        bottom = top+1
+        im1 = im.crop((left, top, right, bottom))
+        pixels = [i for i in im1.getdata()]
+        if (19,19,19) in pixels:
+            clip_length = pixels.index((19,19,19))
+            # print(clip_length)
+            return clip_length/50
+
+        
+            
+   
     
     def check_if_phrase_started(self,mode='AP'):
         while True:

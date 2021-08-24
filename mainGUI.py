@@ -18,8 +18,11 @@ from deck_viewer import *
 from deck_exporter import*
 from subprocess import call as open_app
 import breeze_resources
+from threads import *
+
 
 # to-do/ ideas:
+    
     # if no more cards in view tab -> change text to delete metadata:
     # delete all should be yes no again
     # delete deck doesnt get rid of all folders -> check for dead folders at startup
@@ -40,204 +43,12 @@ import breeze_resources
     # card idx gets reset when changing tabs
     # fastforward in deck (-/+10) ?
     # get rid of old data structure
-    
+    # manual audio mode
+    # include audio in viewer
+    # include timeouts in while True loops
 
 
-class CalibrationThread(QThread):
-    
-    cal_index = pyqtSignal(int)
-    listener = []
-    xy = [0,0]
-    
-    def __init__(self):
-        super(CalibrationThread,self).__init__()
 
-
-    def queryMousePosition(self):
-        pt = POINT()
-        windll.user32.GetCursorPos(byref(pt))
-        return [pt.x,pt.y]
-
-    def start_calibration(self):   
-        
-        def on_press(key):
-            global xy
-            if key == Key.ctrl_l:
-                xy = queryMousePosition()
-                # print(xy)
-                return False     
-        
-            
-        def on_release(key):
-            if key == Key.esc:
-                return False
-
-        
-        with open('user_settings.cfg') as f:
-            cfg_lines = f.readlines()        
-            
-        for ind,val in enumerate(cfg_lines):
-            # print('Please mark point #{}'.format(ind))
-            
-            with Listener(  
-                           on_press=on_press,
-                           on_release=on_release) as self.listener:
-                       self.listener.join() 
-            cfg_lines[ind] = '{} {}\n'.format(xy[0],xy[1])
-            self.cal_index.emit(ind)
-            if ind == 7:
-                break    
-        
-        with open('user_settings.cfg','w') as f:
-            f.writelines(cfg_lines)
-        self.cal_index.emit(8)
-    
-
-    
-    def run(self):
-        self.start_calibration()
-        
-        
-        
-
-class RecordThread(QThread):
-    
-    change_value = pyqtSignal(int)
-    output_log = pyqtSignal(str)
-        
-    def __init__(self,LLNSaver,mode):
-        super(RecordThread,self).__init__()
-        self.saver = LLNSaver
-        self.mode = mode
-        self.shutdown_req = False
-        self.listener = []
-        self.running_idx = 0
-        
-    def mode_loop(self):
-        # manual mode
-        
-        # self.change_value.emit(1)
-        # self.output_log.emit('test')
-  
-        if self.mode == 'manual':
-            
-            def on_release(key):
-                if key == Key.esc:
-                    # Stop listener
-                    print('-- Shutting down. {} phrase(s) saved.'.format(self.saver.de.ri-self.saver.de.si))
-                    return False
-            
-            def on_press(key):
-                if self.shutdown_req:
-                    return False
-                
-                
-                if key == Key.ctrl_l:
-                    self.saver.save_sentence(self.saver.de.testing,0.0)
-                    self.running_idx = self.running_idx +1
-                    self.change_value.emit(self.running_idx)
-                    time.sleep(0.2)
-                    # print("++ Phrase saved")                    
-                    return         
-            # while not self.shutdown_req:
-  
-            with Listener(  
-                    on_press=on_press,
-                    on_release=on_release) as self.listener:
-                
-                if self.shutdown_req == False:                        
-                    self.listener.join()
-                else:
-                    return
-                print('SM shutdown')
-                return
-                    
-
-        # follow along
-        elif self.mode == 'follow along':
-            print('-- follow along started')
-            while not self.shutdown_req:
-                self.saver.check_if_phrase_started('NAP')
-                # print("++ Phrase started.")
-                self.saver.save_sentence(self.saver.de.testing,0.0)
-                print("++ Phrase saved.")
-                self.running_idx = self.running_idx +1
-                self.change_value.emit(self.running_idx)
-                
-                time.sleep(0.1)
-                self.saver.check_if_phrase_ended()
-                time.sleep(0.1)
-                # print("++ Phrase ended.")
-
-                    
-        # fast forward
-        elif self.mode == 'fast forward':
-            while not self.shutdown_req:
-                im = pyautogui.screenshot()
-                if self.saver.check_if_running(im):
-                    self.saver.check_if_phrase_started()
-                    self.saver.save_sentence(self.saver.de.testing,self.saver.wp.ff_delay)
-                    print("++ Phrase saved.")
-                    self.running_idx = self.running_idx +1
-                    self.change_value.emit(self.running_idx)
-                    pyautogui.press('right')
-        
-
-    
-    def run(self):
-
-        self.mode_loop()
-
-    
-
-class ExportThread(QThread):
-    
-    change_value = pyqtSignal(int)
-    output_log = pyqtSignal(str)
-    
-    def __init__(self,DeckExporter):
-        super(ExportThread,self).__init__()
-        self.deck_exp = DeckExporter
-        
-    def export_loop(self):
-        
-        with open(self.deck_exp.deck_set.path + '{}.csv'.format(self.deck_exp.deck_set.deck), self.deck_exp.edit_mode, newline='',encoding='utf-8') as csvfile:
-            
-            spamwriter = csv.writer(csvfile, delimiter=',',
-                                    quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            # spamwriter.writerow(['Front', 'Back'])
-            # print('-- Starting csv writer.')
-            
-            if self.deck_exp.start_idx ==  self.deck_exp.running_idx:
-                print('-- CSV was already created, save new phrases first.')
-                return False
-        
-            prog_idx = 0
-            for ind in range(self.deck_exp.start_idx,self.deck_exp.running_idx+1):
-
-                if not os.path.isfile(self.deck_exp.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_exp.deck_set.deck,ind)):
-                    continue
-                [sentence,translation,ipa,empty,favorite] = self.deck_exp.get_export_values(ind)
-                if not empty:
-                    line_1 = '<img src="LLNi-{}-{}.png">'.format(self.deck_exp.deck_set.deck,ind)
-                    line_2 = sentence
-                    line_3 = translation
-                    line_4 = ipa
-                    line_5 = favorite
-                    spamwriter.writerow([line_1, line_2, line_3,line_4,line_5]) 
-                    
-                prog_idx = prog_idx +1
-                self.change_value.emit(int(prog_idx*100/self.deck_exp.exp_length))
-                self.output_log.emit('-- exporting card #{} of {}\n'.format(prog_idx,self.deck_exp.exp_length))
-    
-    def run(self):
-        
-        self.deck_exp.initialize_export()
-        self.export_loop()
-
-        
-
-            
             
             
 class NewDeckPopup(QWidget):
@@ -288,6 +99,7 @@ class Ui_MainWindow(object):
         
         if not (check_directory(base_path) or \
                 check_directory(base_path+'/images') or \
+                check_directory(base_path+'/audio') or \
                 check_directory(base_path+'/phrases',True) or \
                 check_directory(base_path+'/trans',True)):
             # print('folders created')
@@ -803,6 +615,8 @@ class Ui_MainWindow(object):
 
 
     def get_phrase_and_trans(self):
+        phrase = '0'
+        trans = ''
         with open(self.deck_set.path+'phrases.txt') as f:
             lines = f.readlines()
             

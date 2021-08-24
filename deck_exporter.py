@@ -223,7 +223,8 @@ class DeckExporter():
         
         favorite = self.check_favorite(index)
         ipa_tr = ''
-        
+        phrase = ''
+        trans = ''
         with open(self.deck_set.path+'phrases.txt') as f:
             lines = f.readlines()
             
