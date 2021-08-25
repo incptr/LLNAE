@@ -6,14 +6,14 @@ Created on Tue Aug 24 23:27:24 2021
 """
 
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
-import time, pyaudio, wave, pytesseract
+import time, pyaudio, wave, pytesseract, csv
 from ctypes import windll, Structure, c_long, byref
 from pynput.keyboard import Key, Listener
          
-class AudioThread(QThread):
+class SaveAudioThread(QThread):
     
     def __init__(self,length,index,deck):
-        super(AudioThread,self).__init__()
+        super(SaveAudioThread,self).__init__()
         
         # print('Attempting rec')
         self.ri=index
@@ -22,7 +22,7 @@ class AudioThread(QThread):
         self.CHANNELS = 2
         self.RATE = 48000
         self.RECORD_SECONDS = length
-        self.WAVE_OUTPUT_FILENAME = "data/{}/audio/LLNa-{}-{}.wav".format(deck,deck,index)   
+        self.WAVE_OUTPUT_FILENAME = "data/{}/audio/LLNa-{}-{}.wav".format(deck,deck,index+1)   
         self.last_word = ''
     
     def record_clip(self):
@@ -51,8 +51,20 @@ class AudioThread(QThread):
         wf.close()
         
     def run(self):
-        
+        print('Saving audio {}'.format(self.ri))
         self.record_clip()
+        
+        
+        
+class SaveImageThread(QThread):
+    
+    def __init__(self,saver,delay):
+        super(SaveImageThread,self).__init__()
+        self.saver = saver
+        self.delay = delay
+    def run(self):
+        print('Saving phrase {}'.format(self.saver.de.ri))
+        self.saver.save_sentence(self.saver.de.testing,self.delay)
             
             
         
@@ -70,7 +82,9 @@ class RecordThread(QThread):
         self.listener = []
         self.running_idx = 0
         self.audio_threads = []
+        self.image_threads = []
         self.audio_id = 0
+        self.image_id = 0
         
     def mode_loop(self):
         # manual mode
@@ -121,13 +135,21 @@ class RecordThread(QThread):
                 
                 if clip_length:
                 # start audio thread
-                    self.audio_threads.append(AudioThread(clip_length+0.35,self.saver.de.ri,self.saver.de.deck))
-                    self.audio_threads[self.audio_id].start() 
-                    # print('thread {} launched'.format(self.audio_id))
-                    self.audio_id = self.audio_id+1
-    
-                    self.saver.save_sentence(self.saver.de.testing,1.3)
+                    print('-- Detected phrase {}'.format(self.saver.de.ri))
+                    
+                    if self.saver.wp.use_audio == 'record if possible':                    
+                        self.audio_threads.append(SaveAudioThread(clip_length+0.6,self.saver.de.ri,self.saver.de.deck))
+                        self.audio_threads[self.audio_id].start() 
+                        # print('thread {} launched'.format(self.audio_id))
+                        self.audio_id = self.audio_id+1
+                    time.sleep(0.2)
+                    self.image_threads.append(SaveImageThread(self.saver,1.0))
+                    self.image_threads[self.image_id].start()
+                    self.image_id = self.image_id+1
+                    
+                    # self.saver.save_sentence(self.saver.de.testing,1.2)
                     # print("++ Phrase saved.")
+                    time.sleep(0.2)
                     self.running_idx = self.running_idx +1
                     self.change_value.emit(self.running_idx)
                 
@@ -239,16 +261,19 @@ class ExportThread(QThread):
             prog_idx = 0
             for ind in range(self.deck_exp.start_idx,self.deck_exp.running_idx+1):
 
-                if not os.path.isfile(self.deck_exp.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_exp.deck_set.deck,ind)):
-                    continue
-                [sentence,translation,ipa,empty,favorite] = self.deck_exp.get_export_values(ind)
+                # if not os.path.isfile(self.deck_exp.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_exp.deck_set.deck,ind)):
+                #     continue
+                [sentence,translation,ipa,empty,favorite,audio] = self.deck_exp.get_export_values(ind)
+                
                 if not empty:
                     line_1 = '<img src="LLNi-{}-{}.png">'.format(self.deck_exp.deck_set.deck,ind)
                     line_2 = sentence
                     line_3 = translation
                     line_4 = ipa
                     line_5 = favorite
-                    spamwriter.writerow([line_1, line_2, line_3,line_4,line_5]) 
+                    line_6 = audio
+                        
+                    spamwriter.writerow([line_1, line_2, line_3,line_4,line_5,line_6]) 
                     
                 prog_idx = prog_idx +1
                 self.change_value.emit(int(prog_idx*100/self.deck_exp.exp_length))

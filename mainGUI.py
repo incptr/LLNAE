@@ -12,14 +12,14 @@ from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from PyQt5.QtGui import QFont
 from settings import WindowSettings,DeckSettings
 from calibrate_screen import *
-from LLNSaver import *
+from deck_recorder import *
 from state_machine import *
 from deck_viewer import *
 from deck_exporter import*
 from subprocess import call as open_app
 import breeze_resources
 from threads import *
-
+from widgets import PlayAudioLabel
 
 # to-do/ ideas:
     
@@ -99,9 +99,7 @@ class Ui_MainWindow(object):
         
         if not (check_directory(base_path) or \
                 check_directory(base_path+'/images') or \
-                check_directory(base_path+'/audio') or \
-                check_directory(base_path+'/phrases',True) or \
-                check_directory(base_path+'/trans',True)):
+                check_directory(base_path+'/audio')):
             # print('folders created')
             pass
         
@@ -265,12 +263,12 @@ class Ui_MainWindow(object):
             dir = self.deck_viewer.deck_set.path + 'images'
             for f in os.listdir(dir):
                 os.remove(os.path.join(dir, f))
-            dir = self.deck_viewer.deck_set.path + 'phrases'
-            for f in os.listdir(dir):
-                os.remove(os.path.join(dir, f))
-            dir = self.deck_viewer.deck_set.path + 'trans'
-            for f in os.listdir(dir):
-                os.remove(os.path.join(dir, f))
+            # dir = self.deck_viewer.deck_set.path + 'phrases'
+            # for f in os.listdir(dir):
+            #     os.remove(os.path.join(dir, f))
+            # dir = self.deck_viewer.deck_set.path + 'trans'
+            # for f in os.listdir(dir):
+            #     os.remove(os.path.join(dir, f))
             # print('++ Index reset to 0. All images deleted')
             
             self.deckPhoto.setPixmap(QtGui.QPixmap('app_data/images/blank.png'))
@@ -288,12 +286,12 @@ class Ui_MainWindow(object):
             dir = self.deck_viewer.deck_set.path + 'images'
             for f in os.listdir(dir):
                 os.remove(os.path.join(dir, f))
-            dir = self.deck_viewer.deck_set.path + 'phrases'
-            for f in os.listdir(dir):
-                os.remove(os.path.join(dir, f))
-            dir = self.deck_viewer.deck_set.path + 'trans'
-            for f in os.listdir(dir):
-                os.remove(os.path.join(dir, f))
+            # dir = self.deck_viewer.deck_set.path + 'phrases'
+            # for f in os.listdir(dir):
+            #     os.remove(os.path.join(dir, f))
+            # dir = self.deck_viewer.deck_set.path + 'trans'
+            # for f in os.listdir(dir):
+            #     os.remove(os.path.join(dir, f))
                 
             dir = self.deck_viewer.deck_set.path
             os.remove(dir + 'params.cfg')
@@ -314,10 +312,12 @@ class Ui_MainWindow(object):
         if self.tabWidget.currentIndex() == 1:
             self.deck_viewer.save_favorite(False)
             os.remove(self.deck_viewer.im_path)
-            os.remove(self.deck_viewer.ph_path)
-            os.remove(self.deck_viewer.sub_path)
+            
+            if os.path.isfile(self.deck_viewer.audio_path):
+                os.remove(self.deck_viewer.audio_path)
+            
             self.deck_viewer.n_cards = self.deck_viewer.n_cards -1
-            [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=1,deletion = 1)  
+            [im_path,idx] = self.deck_viewer.get_next_picture(direction=1,deletion = 1)  
             
             if not im_path == '':
                 
@@ -326,6 +326,15 @@ class Ui_MainWindow(object):
                 self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
                 self.deckPhraseLabel.setText(phrase)
                 self.deckSubLabel.setText(trans)
+                
+                audio_path = self.deck_viewer.load_audio()
+                
+                if not audio_path == '':
+                    
+                    self.playAudioLabel.resize(25,25)
+                    self.playAudioLabel.path = audio_path
+                else:
+                    self.playAudioLabel.resize(25,0)
                 
                 fav_val = self.deck_viewer.check_favorite()
                 if fav_val:
@@ -357,7 +366,7 @@ class Ui_MainWindow(object):
     def next_image_clicked(self):
         
         if self.tabWidget.currentIndex() == 1:
-            [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=1)
+            [im_path,idx] = self.deck_viewer.get_next_picture(direction=1)
             
             if not im_path == '':
                 
@@ -366,6 +375,14 @@ class Ui_MainWindow(object):
                 self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
                 self.deckPhraseLabel.setText(phrase)
                 self.deckSubLabel.setText(trans)
+                
+                audio_path = self.deck_viewer.load_audio()
+                
+                if not audio_path == '':                    
+                    self.playAudioLabel.resize(25,25)
+                    self.playAudioLabel.path = audio_path
+                else:
+                    self.playAudioLabel.resize(25,0)
                 
                 self.label_7.setText('Card #{} of {}'.format(self.deck_viewer.card_number,self.deck_viewer.n_cards))
                 
@@ -381,7 +398,7 @@ class Ui_MainWindow(object):
     def prev_image_clicked(self):
         
         if self.tabWidget.currentIndex() == 1:
-            [im_path,ph_path,sub_path,idx] = self.deck_viewer.get_next_picture(direction=-1)
+            [im_path,idx] = self.deck_viewer.get_next_picture(direction=-1)
             
             if not im_path == '':
                 
@@ -389,7 +406,15 @@ class Ui_MainWindow(object):
 
                 self.deckPhoto.setPixmap(QtGui.QPixmap(im_path))
                 self.deckPhraseLabel.setText(phrase)
-                self.deckSubLabel.setText(trans)                
+                self.deckSubLabel.setText(trans) 
+                
+                audio_path = self.deck_viewer.load_audio()
+                
+                if not audio_path == '':                    
+                    self.playAudioLabel.resize(25,25)
+                    self.playAudioLabel.path = audio_path
+                else:
+                    self.playAudioLabel.resize(25,0)
                 
                 if self.showTranslationCheck.isChecked(): self.deckSubLabel.setText(trans) 
                 
@@ -589,7 +614,7 @@ class Ui_MainWindow(object):
         # print('New res: {}'.format(self.sm.saver.wp.res))
         
     def update_subtitle_mode(self):
-        self.sm.saver.wp.use_trans = self.subtitleModeBox.currentText()
+        self.sm.saver.wp.use_audio = self.recAudioBox.currentText()
         self.sm.saver.wp.save_config()
         # print('New res: {}'.format(self.sm.saver.wp.res))
     
@@ -643,7 +668,7 @@ class Ui_MainWindow(object):
         # create DeckExporter instance
         self.deck_exp = DeckExporter(self.sm.saver.de)
         
-        [im_path,ph_path,sub_path,idx] = self.deck_viewer.load_picture(mode='init')
+        [im_path,idx] = self.deck_viewer.load_picture(mode='init')
         
         if not im_path == '':
             
@@ -653,6 +678,13 @@ class Ui_MainWindow(object):
             self.deckPhraseLabel.setText(phrase)
             self.deckSubLabel.setText(trans)    
             
+            audio_path = self.deck_viewer.load_audio()
+            
+            if not audio_path == '':                
+                self.playAudioLabel.resize(25,25)
+                self.playAudioLabel.path = audio_path
+            else:
+                self.playAudioLabel.resize(25,0)
             
             
             
@@ -744,8 +776,8 @@ class Ui_MainWindow(object):
         self.resolutionBox.setCurrentIndex(idx)
         idx = self.recordingModeBox.findText(self.sm.saver.wp.mode, QtCore.Qt.MatchFixedString)
         self.recordingModeBox.setCurrentIndex(idx)
-        idx = self.subtitleModeBox.findText(self.sm.saver.wp.use_trans, QtCore.Qt.MatchFixedString)
-        self.subtitleModeBox.setCurrentIndex(idx)
+        idx = self.recAudioBox.findText(self.sm.saver.wp.use_audio, QtCore.Qt.MatchFixedString)
+        self.recAudioBox.setCurrentIndex(idx)
         idx = self.ankiCardStyleBox.findText(self.deck_exp.exp_mode, QtCore.Qt.MatchFixedString)
         self.ankiCardStyleBox.setCurrentIndex(idx)
         
@@ -826,7 +858,7 @@ class Ui_MainWindow(object):
         self.resolutionBox.currentIndexChanged.connect(self.update_resolution)
         self.recordingModeBox.currentIndexChanged.connect(self.update_recording_mode)
         self.deckSelectBox.currentIndexChanged.connect(self.update_deck_load)
-        self.subtitleModeBox.currentIndexChanged.connect(self.update_subtitle_mode)
+        self.recAudioBox.currentIndexChanged.connect(self.update_subtitle_mode)
         self.ankiCardStyleBox.currentIndexChanged.connect(self.update_exp_mode)
         
         # checks
@@ -941,11 +973,11 @@ class Ui_MainWindow(object):
         self.label_18 = QtWidgets.QLabel(self.frame)
         self.label_18.setGeometry(QtCore.QRect(20, 520, 141, 21))
         self.label_18.setObjectName("label_18")
-        self.subtitleModeBox = QtWidgets.QComboBox(self.frame)
-        self.subtitleModeBox.setGeometry(QtCore.QRect(180, 520, 141, 25))
-        self.subtitleModeBox.setObjectName("subtitleModeBox")
-        self.subtitleModeBox.addItem("")
-        self.subtitleModeBox.addItem("")
+        self.recAudioBox = QtWidgets.QComboBox(self.frame)
+        self.recAudioBox.setGeometry(QtCore.QRect(180, 520, 141, 25))
+        self.recAudioBox.setObjectName("recAudioBox")
+        self.recAudioBox.addItem("")
+        self.recAudioBox.addItem("")
         self.splitter_8 = QtWidgets.QSplitter(self.frame)
         self.splitter_8.setGeometry(QtCore.QRect(20, 570, 301, 34))
         self.splitter_8.setOrientation(QtCore.Qt.Horizontal)
@@ -958,11 +990,19 @@ class Ui_MainWindow(object):
         self.viewTab = QtWidgets.QWidget()
         self.viewTab.setObjectName("viewTab")
         self.label_7 = QtWidgets.QLabel(self.viewTab)
-        self.label_7.setGeometry(QtCore.QRect(136, 370, 111, 20))
+        self.label_7.setGeometry(QtCore.QRect(136, 368, 111, 20))
         self.label_7.setAlignment(QtCore.Qt.AlignCenter)
         self.label_7.setObjectName("label_7")
-        # self.deckSubLabel.setPixmap(QtGui.QPixmap("data/c.png"))
-        # self.deckSubLabel.setScaledContents(True)
+        
+        self.playAudioLabel = PlayAudioLabel(self.viewTab)
+        self.playAudioLabel.setEnabled(True)
+        self.playAudioLabel.setGeometry(QtCore.QRect(20, 368, 25, 25))
+        self.playAudioLabel.resize(0,25)
+        self.playAudioLabel.setAutoFillBackground(True)
+        self.playAudioLabel.setText("")
+        self.playAudioLabel.setPixmap(QtGui.QPixmap("app_data/images/play.png"))
+        self.playAudioLabel.setScaledContents(True)
+        self.playAudioLabel.setObjectName("playAudioLabel")
         
         self.deckPhoto = QtWidgets.QLabel(self.viewTab)
         self.deckPhoto.setGeometry(QtCore.QRect(20, 25, 341, 171))
@@ -1149,9 +1189,9 @@ class Ui_MainWindow(object):
         self.label_10.setText(_translate("MainWindow", "Translation"))
         self.label_9.setText(_translate("MainWindow", "Original language"))
         self.applyDeckChangesButton.setText(_translate("MainWindow", "Apply"))
-        self.label_18.setText(_translate("MainWindow", "Subtitle mode"))
-        self.subtitleModeBox.setItemText(0, _translate("MainWindow", "use translation"))
-        self.subtitleModeBox.setItemText(1, _translate("MainWindow", "ignore translation"))
+        self.label_18.setText(_translate("MainWindow", "Audio mode"))
+        self.recAudioBox.setItemText(0, _translate("MainWindow", "record if possible"))
+        self.recAudioBox.setItemText(1, _translate("MainWindow", "don't record"))
         self.startRecorderButton.setText(_translate("MainWindow", "Start Recorder"))
         self.stopRecorderButton.setText(_translate("MainWindow", "Stop Recorder"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.recordTab), _translate("MainWindow", "Record"))

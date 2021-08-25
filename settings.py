@@ -56,7 +56,7 @@ class WindowSettings():
     def __init__(self,size,res,ff_delay):
         self.ff_delay = ff_delay
         self.mode = 'manual'
-        self.use_trans = ''         
+        self.use_audio = ''         
         
         self.load_config()
         
@@ -80,14 +80,14 @@ class WindowSettings():
         self.AP_pos = read_cfg(cfg[7])
         self.res = int(cfg[8][:-1])/2160
         self.mode = cfg[9][:-1]
-        self.use_trans = cfg[10][:-2]
+        self.use_audio = cfg[10][:-2]
         
     def save_config(self):
         with open('user_settings.cfg') as f:
             lines = f.readlines()      
             lines[8] = str(int(self.res*2160)) + '\n'
             lines[9] = self.mode + '\n'
-            lines[10] = self.use_trans +' \n' 
+            lines[10] = self.use_audio +' \n' 
         with open('user_settings.cfg','w') as f:
             f.writelines(lines)
     

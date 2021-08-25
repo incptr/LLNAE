@@ -173,7 +173,6 @@ class DeckExporter():
             ok = True
         
         if ok:        
-            # print('-- Copying files to Anki directory.')
             self.deck_set.load_params()
             deck_name = self.deck_set.deck
             running_index = self.deck_set.ri
@@ -182,22 +181,30 @@ class DeckExporter():
             if self.overwrite:
                 # print('overwrite')
                 start_index = 0
-                files = filter( os.path.isfile,
+                image_files = filter( os.path.isfile,
                               glob.glob(self.deck_set.path + 'images/' + '*') )
-                files = sorted( files,
-                                      key = os.path.getmtime)    
+                image_files = sorted( image_files,
+                                      key = os.path.getmtime) 
+                
+                audio_files = filter( os.path.isfile,
+                              glob.glob(self.deck_set.path + 'audio/' + '*') )
+                audio_files = sorted( audio_files,
+                                      key = os.path.getmtime)
             else:
                 # fix only partly appending
-                files = []        
+                image_files = []        
                 for i in range(start_index,running_index+1):
                     # if i == max_index:
                     #     break
-                    files.append(self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,i))
+                    image_files.append(self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,i))
                     
             # print(files)
-            for f in files:
-                
+            for f in image_files:                
                 shutil.copy(f, os.getenv('APPDATA') + '/Anki2/{}/collection.media'.format(self.profile_name))
+                
+            for f in audio_files:                
+                shutil.copy(f, os.getenv('APPDATA') + '/Anki2/{}/collection.media'.format(self.profile_name))
+                
             return True
         else:
                 return False
@@ -218,13 +225,9 @@ class DeckExporter():
                 break
         return favorite
     
-    def get_export_values(self,index):
+    def get_phrase_val(self,index):
         
-        
-        favorite = self.check_favorite(index)
-        ipa_tr = ''
         phrase = ''
-        trans = ''
         with open(self.deck_set.path+'phrases.txt') as f:
             lines = f.readlines()
             
@@ -233,7 +236,12 @@ class DeckExporter():
             indx = int(vals[0])
             if indx == index:                
                 phrase = ' '.join(vals[1:])
-                
+                break
+        return phrase
+    
+    def get_trans_val(self,index):
+        
+        trans =''
         with open(self.deck_set.path+'trans.txt') as f:
             lines = f.readlines()
             
@@ -242,37 +250,25 @@ class DeckExporter():
             indx = int(vals[0])
             if indx == index:                
                 trans = ' '.join(vals[1:])
-                
-        word_list = phrase
-        word_list_original = word_list
-        blacklist=[',','|','"','-','?','.','«','!','--']
-        
-        for b in blacklist:
-            word_list = word_list.replace(b,'')
+                break
+        return trans
     
-        words = word_list.split()   
-        word_list = ' '.join(words)
+    def get_audio_val(self,index):
         
-        img2 = Image.open(self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,index))
-        translation = trans
+        audio = ''   
+        audio_path = self.deck_set.path + 'audio/LLNa-{}-{}.wav'.format(self.deck_set.deck,index)
         
-        for b in blacklist:
-            translation = translation.replace(b,'')
-            
-        translation = translation.split()
-        translation = ' '.join(translation)
+        # print(audio_path)
         
-        
-        
-        # print(self.exp_mode)
-        
-        if translation == '' and self.exp_mode == 'standard':
-            empty = True
-            return [word_list_original,translation,ipa_tr,empty,favorite]
+        if os.path.isfile(audio_path):
+            audio = '[sound:LLNa-{}-{}.wav]'.format(self.deck_set.deck,index)
         else:
-            empty = False
-            
-            
+            audio = ''
+        return audio
+    
+    def get_ipa_val(self,words):
+        
+        ipa_tr = ''
         if self.use_ipa:          
         
             firstWord = True
@@ -304,7 +300,41 @@ class DeckExporter():
             ipa_tr = ' '     
         
         if not self.ipa_dict_exists: ipa_tr=' '
+        return ipa_tr
+                
+    def get_export_values(self,index):
+        
+        phrase = self.get_phrase_val(index)
+        trans = self.get_trans_val(index)
+        favorite = self.check_favorite(index)
+        audio = self.get_audio_val(index)
+        ipa_tr = ''        
+                
+        # phrase                
+        blacklist=[',','|','"','-','?','.','«','!','--']
+        
+        for b in blacklist:
+            phrase = phrase.replace(b,'')
+    
+        words = phrase.split() 
+        phrase = ' '.join(words)
+        
+        # translation
+        
+        for b in blacklist:
+            trans = trans.replace(b,'')
             
-        return [word_list,translation,ipa_tr,empty,favorite]
+        trans = trans.split()
+        trans = ' '.join(trans)
+
+        if trans == '' and self.exp_mode == 'standard':
+            empty = True
+            return [phrase,trans,ipa_tr,empty,favorite]
+        else:
+            empty = False            
+            
+        ipa_tr = self.get_ipa_val(words)
+            
+        return [phrase,trans,ipa_tr,empty,favorite,audio]
 
     

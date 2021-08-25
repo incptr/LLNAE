@@ -48,6 +48,7 @@ class OCRThread(QThread):
             if start != -1 and end != -1:
               self.text = self.text[start+1:end]
                   
+          
         cut_out('(',')')
         cut_out('{','}')
         cut_out('[',']')
@@ -77,7 +78,7 @@ class LLNSaver():
             countdown = countdown-1
             left = self.wp.cursor_pos[0] + 50
             top = self.wp.cursor_pos[1]
-            right =left + 10
+            right =left + 7
             bottom = top+1
             im1 = im.crop((left, top, right, bottom))
             pixels = [i for i in im1.getdata()]
@@ -103,7 +104,7 @@ class LLNSaver():
         ratio = 50
         
         clip_length = 0
-        left = self.wp.cursor_pos[0] + 60
+        left = self.wp.cursor_pos[0] + 57
         top = self.wp.cursor_pos[1]
         right = left+ 500
         bottom = top+1
@@ -223,39 +224,36 @@ class LLNSaver():
         # newsize = (500, int(500/ratio))
         # im2 = im2.resize(newsize)
         im2 = PIL.ImageOps.invert(im2)
-        im2.save(self.de.path + 'phrases/LLNp-{}-{}.png'.format(self.de.deck,self.de.ri))
+        # im2.save(self.de.path + 'phrases/LLNp-{}-{}.png'.format(self.de.deck,self.de.ri))
         
         self.ph_thread = OCRThread(im2,self.de.og_lang,self.de.path,self.de.ri,'phrases')
         self.ph_thread.start() 
+  
+        #  Translation
+        left = self.wp.trans_ul[0]
+        top = self.wp.trans_ul[1]
+        right = self.wp.trans_br[0]
+        bottom = self.wp.trans_br[1]
+        im3 = im.crop((left, top, right, bottom))
+        ratio = (right-left)/(bottom-top)
         
-        if self.wp.use_trans == 'ignore translation':
-            shutil.copy('app_data/images/white.png', self.de.path + 'trans/LLNt-{}-{}.png'.format(self.de.deck,self.de.ri))
-        else:     
-            #  Translation
-            left = self.wp.trans_ul[0]
-            top = self.wp.trans_ul[1]
-            right = self.wp.trans_br[0]
-            bottom = self.wp.trans_br[1]
-            im3 = im.crop((left, top, right, bottom))
-            ratio = (right-left)/(bottom-top)
-            
-            im3 = PIL.ImageOps.invert(im3)
-            
-            self.tr_thread = OCRThread(im3,self.de.trans_lang,self.de.path,self.de.ri,'trans')
-            self.tr_thread.start() 
+        im3 = PIL.ImageOps.invert(im3)
+        
+        self.tr_thread = OCRThread(im3,self.de.trans_lang,self.de.path,self.de.ri,'trans')
+        self.tr_thread.start() 
             
             # newsize = (500, int(500/ratio))
             # im3 = im3.resize(newsize)
         
    
             
-            im3.save(self.de.path + 'trans/LLNt-{}-{}.png'.format(self.de.deck,self.de.ri))
+        # im3.save(self.de.path + 'trans/LLNt-{}-{}.png'.format(self.de.deck,self.de.ri))
         
-    def save_sentence(self,testing,delay):
-        time.sleep(delay)
+    def save_sentence(self,testing,delay):        
                     
         if not testing:
             self.de.ri = self.de.ri+1;
+        time.sleep(delay)
         self.save_image_parts(self.de.ri)
         self.de.save_params()
         

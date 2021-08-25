@@ -8,8 +8,6 @@ class DeckViewer():
         self.n_cards = 0
         self.card_number = 1
         self.im_path =''
-        self.ph_path =''
-        self.sub_path =''
         
     def check_favorite(self):
         favorite = False
@@ -48,8 +46,16 @@ class DeckViewer():
             if found == False and fav_val == True:
                 f.write('{} {} \n'.format(self.idx,1))
                 
-            
+    def load_audio(self):
+     
+        start_idx = self.idx        
+        self.audio_path = self.deck_set.path + 'audio/LLNa-{}-{}.wav'.format(self.deck_set.deck,start_idx)
+
         
+        if os.path.isfile(self.audio_path):
+            return self.audio_path
+        else:
+            return ''
         
     def load_picture(self,mode=''):
         
@@ -68,18 +74,17 @@ class DeckViewer():
    
 
         self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
-        self.ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,start_idx)
-        self.sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,start_idx)
+        self.audio_path = self.deck_set.path + 'audio/LLNa-{}-{}.png'.format(self.deck_set.deck,start_idx)
         
         self.idx = max(start_idx,0) 
         idx = self.idx
         
 
         
-        if os.path.isfile(self.im_path) and os.path.isfile(self.ph_path) and os.path.isfile(self.sub_path):
-            return [self.im_path,self.ph_path,self.sub_path,idx]
+        if os.path.isfile(self.im_path):
+            return [self.im_path,idx]
         else:
-            return ['','','',idx]
+            return ['',idx]
         
     def get_next_picture(self,direction=0,mode='standard',deletion=0):
         
@@ -109,32 +114,29 @@ class DeckViewer():
             if start_idx <= first_index and direction == -1:
                 start_idx = last_index
                 self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
-                self.ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,start_idx)
-                self.sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,start_idx)
+                self.audio_path = self.deck_set.path + 'audio/LLNa-{}-{}.png'.format(self.deck_set.deck,start_idx)
                 self.card_number = self.n_cards
                 break
             
             elif start_idx >= last_index and direction == 1:
                 start_idx = first_index
                 self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
-                self.ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,start_idx)
-                self.sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,start_idx)
+                self.audio_path = self.deck_set.path + 'audio/LLNa-{}-{}.png'.format(self.deck_set.deck,start_idx)
                 self.card_number = 1
                 break
             
             start_idx = start_idx+direction
             self.im_path = self.deck_set.path + 'images/LLNi-{}-{}.png'.format(self.deck_set.deck,start_idx)
-            self.ph_path = self.deck_set.path + 'phrases/LLNp-{}-{}.png'.format(self.deck_set.deck,start_idx)
-            self.sub_path = self.deck_set.path + 'trans/LLNt-{}-{}.png'.format(self.deck_set.deck,start_idx)
+            self.audio_path = self.deck_set.path + 'audio/LLNa-{}-{}.png'.format(self.deck_set.deck,start_idx)
             
-            if os.path.isfile(self.im_path) and os.path.isfile(self.ph_path) and os.path.isfile(self.sub_path):
+            if os.path.isfile(self.im_path):
                 img_found = True
                 self.card_number = self.card_number + direction - deletion
         
         self.idx = start_idx
 
-        if os.path.isfile(self.im_path) and os.path.isfile(self.ph_path) and os.path.isfile(self.sub_path):
-            return [self.im_path,self.ph_path,self.sub_path,self.idx]
+        if os.path.isfile(self.im_path):
+            return [self.im_path,self.idx]
         else:
-            return ['','','',self.idx]
+            return ['',self.idx]
         

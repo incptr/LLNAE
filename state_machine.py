@@ -5,10 +5,11 @@ Created on Fri Aug 20 13:11:12 2021
 @author: domen
 """
 from initialize import *
-from LLNSaver import *
+from deck_recorder import *
 from settings import *
 import threading, time, os, ctypes
 
+# replace
 class StateMachine():
     def __init__(self,LLNSaver,mode):
         self.saver = LLNSaver
