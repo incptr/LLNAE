@@ -20,7 +20,7 @@ import pandas as pd
 import numpy as np
 import time, os
 import shutil, os
-from settings import *
+from src.settings import *
 import csv,glob
 from PyQt5.QtWidgets import QWidget,QInputDialog
 # from mainGUI import NewDeckPopup
@@ -109,7 +109,7 @@ class DeckExporter():
         
         self.ipa_dict_exists = False
         
-        if os.path.isfile('ipa_dict/{}.csv'.format(self.deck_set.og_lang)):
+        if os.path.isfile('app_data/ipa_dict/{}.csv'.format(self.deck_set.og_lang)):
             self.ipa_dict_exists = True
             
         if not self.ipa_dict_exists:
@@ -117,7 +117,7 @@ class DeckExporter():
             self.ipa=['','']
             self.data = []
         else:
-            data = pd.read_csv('ipa_dict/{}.csv'.format(self.deck_set.og_lang))    
+            data = pd.read_csv('app_data/ipa_dict/{}.csv'.format(self.deck_set.og_lang))    
             # print('-- IPA dictionary for language code: {} loaded.'.format(self.deck_set.og_lang))
             data = pd.DataFrame(data)
             self.data = data.to_numpy()
@@ -182,7 +182,7 @@ class DeckExporter():
         else:
             ok = True
         
-        if ok:        
+        if ok:     # to-do: and folder exists!!!   
             self.deck_set.load_params()
             deck_name = self.deck_set.deck
             running_index = self.deck_set.ri
@@ -339,7 +339,7 @@ class DeckExporter():
 
         if trans == '' and self.exp_mode == 'standard':
             empty = True
-            return [phrase,trans,ipa_tr,empty,favorite]
+            return [phrase,trans,ipa_tr,empty,favorite,audio]
         else:
             empty = False            
             

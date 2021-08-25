@@ -211,7 +211,7 @@ class CalibrationThread(QThread):
                 return False
 
         
-        with open('user_settings.cfg') as f:
+        with open('app_data/cfg/user_settings.cfg') as f:
             cfg_lines = f.readlines()        
             
         for ind,val in enumerate(cfg_lines):
@@ -226,7 +226,7 @@ class CalibrationThread(QThread):
             if ind == 7:
                 break    
         
-        with open('user_settings.cfg','w') as f:
+        with open('app_data/cfg/user_settings.cfg','w') as f:
             f.writelines(cfg_lines)
         self.cal_index.emit(8)
     
@@ -274,6 +274,8 @@ class ExportThread(QThread):
                     line_6 = audio
                         
                     spamwriter.writerow([line_1, line_2, line_3,line_4,line_5,line_6]) 
+                else:
+                    continue
                     
                 prog_idx = prog_idx +1
                 self.change_value.emit(int(prog_idx*100/self.deck_exp.exp_length))
