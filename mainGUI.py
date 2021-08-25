@@ -10,16 +10,16 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMessageBox, QWidget,QPushButton,QLineEdit, QInputDialog, QApplication, QFormLayout
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from PyQt5.QtGui import QFont
-from settings import WindowSettings,DeckSettings
-from calibrate_screen import *
-from deck_recorder import *
-from state_machine import *
-from deck_viewer import *
-from deck_exporter import*
+from src.settings import WindowSettings,DeckSettings
+# from calibrate_screen import *
+from src.deck_recorder import *
+from src.state_machine import *
+from src.deck_viewer import *
+from src.deck_exporter import*
 from subprocess import call as open_app
-import breeze_resources
-from threads import *
-from widgets import PlayAudioLabel
+import src.stylesheet
+from src.threads import *
+from src.widgets import PlayAudioLabel
 
 # to-do/ ideas:
     
@@ -39,28 +39,11 @@ from widgets import PlayAudioLabel
     # disable elements when rec started
     # be able to edit subtitle/phrase
     # include IPA directly
-    # enable hover over like https://ylhyra.is/Ylh%C3%BDra
+    # enable hover over like https://ylhyra.is/Ylh%C3%BDra (-)
     # card idx gets reset when changing tabs
     # fastforward in deck (-/+10) ?
-    # get rid of old data structure
     # manual audio mode
-    # include audio in viewer
     # include timeouts in while True loops
-
-
-
-            
-            
-class NewDeckPopup(QWidget):
-    def __init__(self):
-        super().__init__()
-        
-
-    def pop(self,text,title='New deck'):
-        [txt,ok] = QInputDialog.getText(self, title,text)
-        if txt == '':
-            txt = ' '
-        return [txt,ok]
 
 
 class Ui_MainWindow(object):

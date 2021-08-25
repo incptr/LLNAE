@@ -11,7 +11,7 @@ from pynput.keyboard import Key, Listener
 import numpy as np
 import time,shutil, pytesseract
 from PyQt5.QtCore import QThread
-from threads import *
+from src.threads import *
 
          
 class OCRThread(QThread):

@@ -22,7 +22,8 @@ import time, os
 import shutil, os
 from settings import *
 import csv,glob
-from mainGUI import NewDeckPopup
+from PyQt5.QtWidgets import QWidget,QInputDialog
+# from mainGUI import NewDeckPopup
 try:
     from PIL import Image
 except ImportError:
@@ -53,7 +54,16 @@ except ImportError:
 #     ipa = data[:,1]
 
 # # settings
+class NewDeckPopup(QWidget):
+    def __init__(self):
+        super().__init__()
+        
 
+    def pop(self,text,title='New deck'):
+        [txt,ok] = QInputDialog.getText(self, title,text)
+        if txt == '':
+            txt = ' '
+        return [txt,ok]
 
 
 
@@ -76,7 +86,7 @@ class DeckExporter():
         
     def load_config(self):       
         # to-do enable different user settings/profiles
-        with open('exp_settings.cfg') as f:
+        with open('app_data/cfg/exp_settings.cfg') as f:
             cfg = f.readlines()      
         self.exp_mode = cfg[0][:-1]
         self.use_ipa = int(cfg[1])
@@ -85,14 +95,14 @@ class DeckExporter():
         self.copy_img = int(cfg[4])
         
     def save_config(self):
-        with open('exp_settings.cfg') as f:
+        with open('app_data/cfg/exp_settings.cfg') as f:
             lines = f.readlines()      
             lines[0] = str(self.exp_mode) + '\n'
             lines[1] = str(self.use_ipa) + '\n'
             lines[2] = str(self.open_csv) + '\n'
             lines[3] = str(self.overwrite) + '\n'
             lines[4] = str(self.copy_img) + '\n'
-        with open('exp_settings.cfg','w') as f:
+        with open('app_data/cfg/exp_settings.cfg','w') as f:
             f.writelines(lines)
             
     def initialize_export(self):

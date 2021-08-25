@@ -4,9 +4,9 @@ Created on Fri Aug 20 13:11:12 2021
 
 @author: domen
 """
-from initialize import *
-from deck_recorder import *
-from settings import *
+# from initialize import *
+from src.deck_recorder import *
+from src.settings import *
 import threading, time, os, ctypes
 
 # replace

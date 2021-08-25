@@ -67,7 +67,7 @@ class WindowSettings():
             return [int(nums[0]),int(nums[1])]       
         
         # to-do enable different user settings/profiles
-        with open('user_settings.cfg') as f:
+        with open('app_data/cfg/user_settings.cfg') as f:
             cfg = f.readlines()      
             
         self.nflix_ul = read_cfg(cfg[0])
@@ -83,12 +83,12 @@ class WindowSettings():
         self.use_audio = cfg[10][:-2]
         
     def save_config(self):
-        with open('user_settings.cfg') as f:
+        with open('app_data/cfg/user_settings.cfg') as f:
             lines = f.readlines()      
             lines[8] = str(int(self.res*2160)) + '\n'
             lines[9] = self.mode + '\n'
             lines[10] = self.use_audio +' \n' 
-        with open('user_settings.cfg','w') as f:
+        with open('app_data/cfg/user_settings.cfg','w') as f:
             f.writelines(lines)
     
             
