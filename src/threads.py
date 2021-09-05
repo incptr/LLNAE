@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Aug 24 23:27:24 2021
-
 @author: domen
 """
 
@@ -265,7 +264,8 @@ class ExportThread(QThread):
                 #     continue
                 [sentence,translation,ipa,empty,favorite,audio] = self.deck_exp.get_export_values(ind)
                 
-                if not empty:
+                # We only export when there is a sentence 
+                if sentence:
                     line_1 = '<img src="LLNi-{}-{}.png">'.format(self.deck_exp.deck_set.deck,ind)
                     line_2 = sentence
                     line_3 = translation
@@ -287,5 +287,3 @@ class ExportThread(QThread):
         self.export_loop()
 
         
-
-            

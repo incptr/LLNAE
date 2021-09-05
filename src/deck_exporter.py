@@ -238,7 +238,7 @@ class DeckExporter():
     def get_phrase_val(self,index):
         
         phrase = ''
-        with open(self.deck_set.path+'phrases.txt') as f:
+        with open(self.deck_set.path+'phrases.txt', encoding="utf-8") as f:
             lines = f.readlines()
             
         for line in lines:            

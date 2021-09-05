@@ -53,7 +53,7 @@ class OCRThread(QThread):
         cut_out('{','}')
         cut_out('[',']')
 
-        with open('{}{}.txt'.format(self.path,self.type),'a') as f:
+        with open('{}{}.txt'.format(self.path,self.type),'a',encoding="utf-8") as f:
             f.write('{} {} \n'.format(self.idx,self.text))      
          
      
@@ -106,14 +106,14 @@ class LLNSaver():
         clip_length = 0
         left = self.wp.cursor_pos[0] + 57
         top = self.wp.cursor_pos[1]
-        right = left+ 500
+        right = left+ 500 + 200 #----------------------------------------
         bottom = top+1
         im1 = im.crop((left, top, right, bottom))
         pixels = [i for i in im1.getdata()]
         if (19,19,19) in pixels:
             clip_length = pixels.index((19,19,19))
             # print(clip_length)
-            return clip_length/50
+            return clip_length/35 # ----------------------------------------------------------------- / 50 egentligen
 
         
             

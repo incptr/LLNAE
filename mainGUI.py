@@ -289,12 +289,35 @@ class Ui_MainWindow(object):
 
             self.reinitialize_deck_fields()
             
-          
+    
     def delete_phrase_clicked(self):  
       
         if self.tabWidget.currentIndex() == 1:
             self.deck_viewer.save_favorite(False)
             os.remove(self.deck_viewer.im_path)
+            
+            # Remove phrase from .txt file 
+            with open(self.deck_set.path+'phrases.txt',"r",encoding="utf-8") as f:
+                lines = f.readlines()
+                
+            with open(self.deck_set.path+'phrases.txt',"w",encoding="utf-8") as f:
+                for line in lines:
+                    vals = line.split(' ')
+                    indx = int(vals[0])
+                    if indx != self.deck_viewer.idx:
+                        f.write(line)
+
+            # Remove translation from .txt file
+            with open(self.deck_set.path+'trans.txt',"r",encoding="utf-8") as f:
+                lines = f.readlines()
+                
+            with open(self.deck_set.path+'trans.txt',"w",encoding="utf-8") as f:
+                for line in lines:
+                    vals = line.split(' ')
+                    indx = int(vals[0])
+                    if indx != self.deck_viewer.idx:
+                        f.write(line)
+            
             
             if os.path.isfile(self.deck_viewer.audio_path):
                 os.remove(self.deck_viewer.audio_path)
@@ -620,12 +643,36 @@ class Ui_MainWindow(object):
         print(self.sm.saver.de.og_lang )
         print(self.sm.saver.de.trans_lang)
         self.sm.saver.de.save_params()
+    
+    
+    def remove_phrase_and_trans(self, idx):
+    
+        phrase,trans = get_phrase_and_trans()
+        
+        with open(self.deck_set.path+'phrases.txt',"r",encoding="utf-8") as f:
+            lines = f.readlines()
+            
+        with open(self.deck_set.path+'phrases.txt',"w",encoding="utf-8") as f:
+            for line in lines:
+                if line != phrase:
+                    f.write(line)
+                    
+        
+        with open(self.deck_set.path+'trans.txt',"r",encoding="utf-8") as f:
+            lines = f.readlines()
+            
+        with open(self.deck_set.path+'trans.txt',"w",encoding="utf-8") as f:
+            for line in lines:
+                if line != trans:
+                    f.write(line)
+        
+        print(f"Phrase with index {idx} removed!")
 
 
     def get_phrase_and_trans(self):
         phrase = '0'
         trans = ''
-        with open(self.deck_set.path+'phrases.txt') as f:
+        with open(self.deck_set.path+'phrases.txt',encoding="utf-8") as f:
             lines = f.readlines()
             
         for line in lines:            
